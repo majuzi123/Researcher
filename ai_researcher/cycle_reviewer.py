@@ -13,7 +13,7 @@ class CycleReviewer:
                  custom_model_name=None,
                  device="cuda",
                  tensor_parallel_size=1,
-                 gpu_memory_utilization=0.95):
+                 gpu_memory_utilization=0.8):
         """
         Initialize the CycleReviewer.
 
@@ -25,8 +25,8 @@ class CycleReviewer:
             gpu_memory_utilization (float): Fraction of GPU memory to use
         """
         model_mapping = {
-            "8B": "WestlakeNLP/CycleReviewer-ML-Llama3.1-8B",
-            "70B": "WestlakeNLP/CycleReviewer-ML-Llama3.1-70B",
+            "8B": "WestlakeNLP/WhizReviewer-ML-Llama3.1-8B",
+            "70B": "WestlakeNLP/CycleReviewer-ML-Llama-3.1-70B",
             "123B": "WestlakeNLP/CycleReviewer-ML-Pro-123B"
         }
 
