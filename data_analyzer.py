@@ -517,3 +517,68 @@ class PaperReviewAnalyzer:
             self.log(f"Columns: {list(self.df.columns)}", "run_columns")
 
         return self.df
+
+# python
+def quick_analysis(file_path: str):
+    analyzer = PaperReviewAnalyzer(file_path)
+    if not analyzer.load_data():
+        return None
+
+    analyzer.log("Quick Analysis Results", "quick_title")
+    analyzer.log("=" * 40, "quick_sep")
+
+    total_papers = len(analyzer.data)
+    total_reviews = sum(len(paper.get("rates", []) or []) for paper in analyzer.data)
+
+    decisions = [paper.get("decision", "Unknown") for paper in analyzer.data]
+    decision_counts = Counter(decisions)
+
+    all_ratings = []
+    for paper in analyzer.data:
+        all_ratings.extend([r for r in (paper.get("rates", []) or []) if (lambda x: (isinstance(x, (int, float)) or (isinstance(x, str) and x.strip().replace('.', '', 1).isdigit())))(r)])
+
+    analyzer.log(f"Papers: {total_papers}", "quick_papers")
+    analyzer.log(f"Total reviews: {total_reviews}", "quick_total_reviews")
+    avg_rev_text = f"Average reviews per paper: {total_reviews / total_papers:.2f}" if total_papers > 0 else "Average reviews per paper: 0.00"
+    analyzer.log(avg_rev_text, "quick_avg_reviews")
+    try:
+        if all_ratings:
+            numeric = [float(x) for x in all_ratings]
+            analyzer.log(f"Average rating: {np.mean(numeric):.2f}", "quick_avg_rating")
+    except Exception:
+        pass
+    analyzer.log(f"Decision distribution: {dict(decision_counts)}", "quick_decision_dist")
+
+    return analyzer.data
+
+
+if __name__ == "__main__":
+    file_path = "test.jsonl"
+
+    prompt = "Select analysis mode (1=full analysis, 2=quick analysis): "
+    temp_analyzer = PaperReviewAnalyzer(file_path)
+    temp_analyzer.log("Academic Paper Review Dataset Analysis Tool", "main_title")
+    temp_analyzer.log("=" * 50, "main_sep")
+    try:
+        analysis_type = input(prompt).strip()
+    except Exception:
+        analysis_type = "2"
+    temp_analyzer.log(f"User selected option: {analysis_type}", "main_user_choice")
+
+    if analysis_type == "1":
+        analyzer = PaperReviewAnalyzer(file_path)
+        results_df = analyzer.run_complete_analysis()
+        if results_df is not None:
+            analyzer.log(f"Analyzed {len(analyzer.data)} papers", "summary_analyzed")
+            analyzer.log(f"Processed {len(results_df)} review entries", "summary_processed")
+            if "rating" in results_df.columns:
+                try:
+                    analyzer.log(f"Average rating: {results_df['rating'].mean():.2f}", "summary_avg_rating")
+                except Exception:
+                    pass
+    elif analysis_type == "2":
+        data = quick_analysis(file_path)
+        if data:
+            pass
+    else:
+        temp_analyzer.log("Invalid choice, please enter 1 or 2", "main_invalid_choice")
