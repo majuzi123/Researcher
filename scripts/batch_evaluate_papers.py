@@ -79,20 +79,22 @@ VARIANT_SUFFIXES = {
 
 def get_base_paper_id(paper: Dict) -> str:
     """Return a stable base id used to group variants of the same paper."""
+    # Priority 1: use original_id (all variants of same paper share this)
+    original_id = paper.get("original_id")
+    if original_id:
+        return str(original_id)
+
+    # Priority 2: use original_path
+    original_path = paper.get("original_path")
+    if original_path:
+        return str(original_path)
+
+    # Priority 3: try paper_id
     paper_id = paper.get("paper_id")
     if paper_id:
         return str(paper_id)
 
-    raw_id = paper.get("id")
-    if raw_id:
-        raw_id = str(raw_id)
-        # Common format: <base>_<variant>
-        if "_" in raw_id:
-            base, suffix = raw_id.rsplit("_", 1)
-            if suffix in VARIANT_SUFFIXES:
-                return base
-        return raw_id
-
+    # Last resort: use title
     title = paper.get("original_title") or paper.get("title")
     return str(title) if title else ""
 
