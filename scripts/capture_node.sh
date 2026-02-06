@@ -1,10 +1,10 @@
 #!/bin/bash
 # 简化版节点捕获脚本
 
-START=2
+START=33
 END=44
 QUEUE="abaca"
-WAIT_TIME=10
+WAIT_TIME=60
 OARSUB_TIMEOUT=10  # seconds to wait for oarsub to return
 JOB_DURATION=3600  # seconds the job will sleep to hold the node
 

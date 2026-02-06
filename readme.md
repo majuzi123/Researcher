@@ -391,6 +391,49 @@ if DeepReviewer is helpful to your work, please cite our paper:
 }
 ```
 
+---
+
+## 📁 Paper Variant Dataset Tools
+
+This project includes tools for generating and analyzing paper variant datasets. The following files have been organized for better project structure:
+
+### Directory Organization
+
+```
+📁 docs/                           # Documentation
+   ├── DATASET_ANALYSIS_GUIDE.md  # Dataset analysis guide
+   ├── DATASET_FORMAT.md          # Dataset format specification
+   └── VARIANT_GENERATION_LOGIC.md # Variant generation logic
+
+📁 scripts/                        # Analysis and generation scripts
+   ├── generate_variant_dataset.py # Generate paper variants
+   ├── analyze_dataset.py         # Analyze and visualize datasets
+   ├── batch_variant_evaluator.py # Batch evaluation
+   └── data_analyzer.py           # Data analysis utilities
+
+📁 examples/                       # Example files
+   └── example_dataset.jsonl      # Sample dataset output
+```
+
+### Quick Start for Variant Dataset
+
+1. **Generate dataset:**
+   ```bash
+   python scripts/generate_variant_dataset.py
+   ```
+
+2. **Analyze results:**
+   ```bash
+   python scripts/analyze_dataset.py
+   ```
+
+3. **View documentation:**
+   - See [docs/DATASET_ANALYSIS_GUIDE.md](docs/DATASET_ANALYSIS_GUIDE.md) for detailed usage
+   - See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for complete project organization
+
+The variant dataset tool generates 9 variants per paper (original, no_abstract, no_conclusion, no_introduction, no_references, no_experiments, no_methods, no_formulas, no_figures) for research analysis purposes.
+
+
 ## 📮 Contact
 
 - [Submit an Issue](https://github.com/zhu-minjun/Researcher/issues)
