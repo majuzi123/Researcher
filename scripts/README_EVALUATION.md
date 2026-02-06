@@ -2,9 +2,17 @@
 
 This directory contains scripts for batch evaluation of paper variants and comprehensive analysis of the results.
 
+## 📚 Documentation
+
+- 🚀 **[QUICK_REFERENCE.md](./QUICK_REFERENCE.md)** - Quick reference guide (Start here!)
+- 📘 **[BATCH_EVALUATION_FIX.md](./BATCH_EVALUATION_FIX.md)** - Latest fixes and improvements
+- 📗 **[DATA_FLOW_GUIDE.md](./DATA_FLOW_GUIDE.md)** - Complete data flow and field documentation
+- 📕 **[README_SCRIPTS.md](./README_SCRIPTS.md)** - Script documentation index
+- 💻 **[example_query_results.py](./example_query_results.py)** - Example code for querying results
+
 ## Overview
 
-1. **`batch_evaluate_papers.py`** - Samples and evaluates 100 papers from the generated dataset
+1. **`batch_evaluate_papers.py`** - Samples and evaluates 100 base papers (each with all variants)
 2. **`analyze_evaluation_results.py`** - Performs statistical analysis and generates visualizations
 
 ## Prerequisites
@@ -124,12 +132,13 @@ python scripts/analyze_evaluation_results.py
 
 ## Customization
 
-### Modify Sample Size
+### Modify Sample Size and Ratio
 
 Edit `batch_evaluate_papers.py`:
 ```python
-SAMPLE_SIZE = 200  # Increase to 200 papers
-TRAIN_RATIO = 0.75  # 75% train, 25% test
+SAMPLE_SIZE = 200  # Increase to 200 base papers (= 1200 total evaluations)
+TRAIN_RATIO = 0.75  # Force 75% train, 25% test (instead of auto-calculate)
+# Or keep TRAIN_RATIO = None for automatic calculation based on dataset
 ```
 
 ### Change Rating Bins
