@@ -249,9 +249,22 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
     error_count = 0
 
     start_time = datetime.now()
+
+    # Create incremental save file
+    # Ensure output directory exists
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    timestamp = start_time.strftime('%Y%m%d_%H%M%S')
+    incremental_file = OUTPUT_DIR / f'evaluation_results_{timestamp}_incremental.jsonl'
+
+    # Convert to absolute path to avoid any issues
+    incremental_file = incremental_file.resolve()
+
     logger.info("=" * 70)
     logger.info(f"Starting evaluation of {total} papers")
     logger.info(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Incremental save file: {incremental_file}")
+    logger.info("✓ Results will be saved immediately after each evaluation")
     logger.info("=" * 70)
 
     for i, paper in enumerate(tqdm(papers, desc="Evaluating papers")):
@@ -311,7 +324,16 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
                 results.append(result)
                 success_count += 1
 
-                logger.debug(f"[{paper_num}/{total}] ✓ Result: rating={rating:.1f}, decision={decision}")
+                # Incremental save: append to file immediately
+                try:
+                    with open(incremental_file, 'a', encoding='utf-8') as f:
+                        f.write(json.dumps(result, ensure_ascii=False) + '\n')
+                    logger.debug(f"[{paper_num}/{total}] ✓ Result: rating={rating:.1f}, decision={decision} (saved)")
+                except Exception as save_error:
+                    logger.error(f"[{paper_num}/{total}] ERROR saving to incremental file: {save_error}")
+                    logger.error(f"  Incremental file path: {incremental_file}")
+                    # Continue evaluation even if save fails
+                    pass
 
             else:
                 skip_count += 1
@@ -339,6 +361,8 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
     logger.info(f"End time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"Total duration: {duration}")
     logger.info(f"Results: {success_count} success, {skip_count} skipped, {error_count} errors")
+    logger.info(f"Incremental results saved to: {incremental_file}")
+    logger.info(f"  ✓ Safe to resume from this file if needed")
     logger.info(f"Success rate: {success_count/total*100:.1f}%")
     if success_count > 0:
         logger.info(f"Average time per paper: {duration.total_seconds()/success_count:.2f}s")
