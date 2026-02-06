@@ -11,12 +11,12 @@ print("=" * 60)
 train_variants = Counter()
 test_variants = Counter()
 
-with open('util/train_with_variants.jsonl', 'r', encoding='utf-8') as f:
+with open('../util/train_with_variants.jsonl', 'r', encoding='utf-8') as f:
     for line in f:
         obj = json.loads(line)
         train_variants[obj['variant_type']] += 1
 
-with open('util/test_with_variants.jsonl', 'r', encoding='utf-8') as f:
+with open('../util/test_with_variants.jsonl', 'r', encoding='utf-8') as f:
     for line in f:
         obj = json.loads(line)
         test_variants[obj['variant_type']] += 1
