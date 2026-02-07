@@ -1,0 +1,121 @@
+{
+  "total_papers": 581,
+  "timestamp": "20260207_115647",
+  "config": {
+    "sample_size": 100,
+    "train_ratio": null,
+    "model_size": "8B",
+    "seed": 42
+  },
+  "variant_distribution": {
+    "original": 96,
+    "no_abstract": 96,
+    "no_introduction": 98,
+    "no_conclusion": 97,
+    "no_methods": 96,
+    "no_experiments": 98
+  },
+  "decision_distribution": {
+    "Reject": 515,
+    "Accept": 66
+  },
+  "rating_statistics": {
+    "mean": 4.450946643717728,
+    "median": 4.5,
+    "min": 1.0,
+    "max": 6.5,
+    "std": 0.9154817643958301
+  },
+  "variant_statistics": {
+    "no_methods": {
+      "count": 96,
+      "avg_rating": 4.260416666666667,
+      "median_rating": 4.5,
+      "std_rating": 0.899500348634164,
+      "decision_distribution": {
+        "Reject": 84,
+        "Accept": 12
+      },
+      "accept_rate": 0.125,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    },
+    "no_experiments": {
+      "count": 98,
+      "avg_rating": 4.196428571428571,
+      "median_rating": 4.5,
+      "std_rating": 0.8954711367213524,
+      "decision_distribution": {
+        "Reject": 91,
+        "Accept": 7
+      },
+      "accept_rate": 0.07142857142857142,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    },
+    "no_conclusion": {
+      "count": 97,
+      "avg_rating": 4.701030927835052,
+      "median_rating": 5.0,
+      "std_rating": 0.9455482145913229,
+      "decision_distribution": {
+        "Reject": 87,
+        "Accept": 10
+      },
+      "accept_rate": 0.10309278350515463,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    },
+    "no_abstract": {
+      "count": 96,
+      "avg_rating": 4.653645833333333,
+      "median_rating": 4.75,
+      "std_rating": 0.8625007945584949,
+      "decision_distribution": {
+        "Reject": 81,
+        "Accept": 15
+      },
+      "accept_rate": 0.15625,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    },
+    "no_introduction": {
+      "count": 98,
+      "avg_rating": 4.301020408163265,
+      "median_rating": 4.5,
+      "std_rating": 0.9123714311864398,
+      "decision_distribution": {
+        "Reject": 87,
+        "Accept": 11
+      },
+      "accept_rate": 0.11224489795918367,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    },
+    "original": {
+      "count": 96,
+      "avg_rating": 4.598958333333333,
+      "median_rating": 4.875,
+      "std_rating": 0.8587622416707072,
+      "decision_distribution": {
+        "Reject": 85,
+        "Accept": 11
+      },
+      "accept_rate": 0.11458333333333333,
+      "avg_originality": 0,
+      "avg_quality": 0,
+      "avg_clarity": 0,
+      "avg_significance": 0
+    }
+  }
+}
