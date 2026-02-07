@@ -30,6 +30,10 @@ TRAIN_RATIO = None  # Auto-calculate based on actual dataset ratio (set to numbe
 SEED = 42
 MODEL_SIZE = "8B"  # CycleReviewer model size
 
+# Resume configuration - set to the incremental file path to resume from
+# Example: RESUME_FROM = PROJECT_ROOT / "evaluation_results" / "evaluation_results_20260206_224300_incremental.jsonl"
+RESUME_FROM = None  # Set to a file path to resume, or None to start fresh
+
 
 # ========== Logging Setup ==========
 def setup_logging():
@@ -97,6 +101,47 @@ def get_base_paper_id(paper: Dict) -> str:
     # Last resort: use title
     title = paper.get("original_title") or paper.get("title")
     return str(title) if title else ""
+
+
+def find_latest_incremental_file() -> Path:
+    """Find the most recent incremental results file"""
+    incremental_files = list(OUTPUT_DIR.glob("evaluation_results_*_incremental.jsonl"))
+    if not incremental_files:
+        return None
+    return max(incremental_files, key=lambda p: p.stat().st_mtime)
+
+
+def load_completed_results(resume_file: Path) -> tuple:
+    """
+    Load already completed evaluation results from incremental file.
+
+    Returns:
+        tuple: (list of results, set of completed paper keys)
+    """
+    results = []
+    completed_keys = set()
+
+    if not resume_file or not resume_file.exists():
+        return results, completed_keys
+
+    logger.info(f"Loading completed results from: {resume_file}")
+
+    with open(resume_file, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, 1):
+            if line.strip():
+                try:
+                    result = json.loads(line)
+                    results.append(result)
+                    # Create unique key: base_paper_id + variant_type
+                    key = f"{result.get('base_paper_id', '')}_{result.get('variant_type', '')}"
+                    completed_keys.add(key)
+                except json.JSONDecodeError as e:
+                    logger.warning(f"  Skipping malformed line {line_num}: {e}")
+
+    logger.info(f"  ✓ Loaded {len(results)} completed evaluations")
+    logger.info(f"  ✓ Found {len(completed_keys)} unique paper-variant combinations")
+
+    return results, completed_keys
 
 
 def load_dataset(filepath: str) -> List[Dict]:
@@ -235,33 +280,51 @@ def sample_papers(train_papers: List[Dict], test_papers: List[Dict],
     return all_sampled
 
 
-def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
+def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer,
+                    resume_file: Path = None, existing_results: List[Dict] = None,
+                    completed_keys: set = None) -> List[Dict]:
     """
-    Evaluate papers using CycleReviewer
+    Evaluate papers using CycleReviewer with resume support.
+
+    Args:
+        papers: List of papers to evaluate
+        reviewer: CycleReviewer instance
+        resume_file: Path to incremental file (for appending new results)
+        existing_results: Already completed results (from resume)
+        completed_keys: Set of completed paper-variant keys (for skipping)
 
     Returns:
         List of evaluation results
     """
-    results = []
+    # Initialize with existing results if resuming
+    results = list(existing_results) if existing_results else []
+    completed_keys = completed_keys or set()
+
     total = len(papers)
-    success_count = 0
+    already_done = len(results)
+    success_count = already_done
     skip_count = 0
     error_count = 0
+    new_evaluations = 0
 
     start_time = datetime.now()
 
-    # Create incremental save file
-    # Ensure output directory exists
+    # Create or use existing incremental save file
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    timestamp = start_time.strftime('%Y%m%d_%H%M%S')
-    incremental_file = OUTPUT_DIR / f'evaluation_results_{timestamp}_incremental.jsonl'
+    if resume_file and resume_file.exists():
+        incremental_file = resume_file
+        logger.info(f"Resuming evaluation, appending to: {incremental_file}")
+    else:
+        timestamp = start_time.strftime('%Y%m%d_%H%M%S')
+        incremental_file = OUTPUT_DIR / f'evaluation_results_{timestamp}_incremental.jsonl'
 
-    # Convert to absolute path to avoid any issues
     incremental_file = incremental_file.resolve()
 
     logger.info("=" * 70)
     logger.info(f"Starting evaluation of {total} papers")
+    if already_done > 0:
+        logger.info(f"  ✓ Resuming: {already_done} already completed, {total - already_done} remaining")
     logger.info(f"Start time: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"Incremental save file: {incremental_file}")
     logger.info("✓ Results will be saved immediately after each evaluation")
@@ -269,12 +332,20 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
 
     for i, paper in enumerate(tqdm(papers, desc="Evaluating papers")):
         paper_num = i + 1
+
+        # Check if already completed (for resume)
+        base_id = paper.get('base_paper_id', get_base_paper_id(paper))
+        variant_type = paper.get('variant_type', 'unknown')
+        paper_key = f"{base_id}_{variant_type}"
+
+        if paper_key in completed_keys:
+            # Already evaluated, skip
+            continue
+
         try:
             # Extract paper text
             paper_text = paper.get('text', '')
-            variant_type = paper.get('variant_type', 'unknown')
-            base_id = paper.get('base_paper_id', get_base_paper_id(paper))
-            title = paper.get('title', 'Unknown')[:50]  # Truncate for display
+            title = paper.get('title', 'Unknown')[:50]
 
             if not paper_text or len(paper_text) < 100:
                 skip_count += 1
@@ -282,12 +353,14 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
                 continue
 
             # Log progress every 10 papers or for important milestones
-            if paper_num % 10 == 0 or paper_num <= 5:
+            completed_so_far = success_count + skip_count + error_count
+            if paper_num % 10 == 0 or paper_num <= 5 or new_evaluations <= 3:
                 elapsed = (datetime.now() - start_time).total_seconds()
-                rate = paper_num / elapsed if elapsed > 0 else 0
-                eta_seconds = (total - paper_num) / rate if rate > 0 else 0
+                rate = new_evaluations / elapsed if elapsed > 0 and new_evaluations > 0 else 0.01
+                remaining = total - completed_so_far
+                eta_seconds = remaining / rate if rate > 0 else 0
                 eta_str = f"{int(eta_seconds // 60)}m {int(eta_seconds % 60)}s"
-                logger.info(f"[{paper_num}/{total}] Processing: {variant_type} | Rate: {rate:.2f} papers/s | ETA: {eta_str}")
+                logger.info(f"[{paper_num}/{total}] Processing: {variant_type} | New: {new_evaluations} | Rate: {rate:.2f}/s | ETA: {eta_str}")
 
             # Evaluate
             logger.debug(f"[{paper_num}/{total}] Evaluating: {base_id} ({variant_type}) - {len(paper_text)} chars")
@@ -323,6 +396,8 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
 
                 results.append(result)
                 success_count += 1
+                new_evaluations += 1
+                completed_keys.add(paper_key)  # Mark as completed
 
                 # Incremental save: append to file immediately
                 try:
@@ -345,10 +420,11 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
             continue
 
         # Periodic summary every 50 papers
-        if paper_num % 50 == 0:
+        if new_evaluations > 0 and new_evaluations % 50 == 0:
             logger.info("-" * 50)
             logger.info(f"Progress: {paper_num}/{total} ({paper_num/total*100:.1f}%)")
-            logger.info(f"  Success: {success_count}, Skipped: {skip_count}, Errors: {error_count}")
+            logger.info(f"  Total completed: {success_count} (new: {new_evaluations})")
+            logger.info(f"  Skipped: {skip_count}, Errors: {error_count}")
             logger.info("-" * 50)
 
     # Final summary
@@ -360,12 +436,12 @@ def evaluate_papers(papers: List[Dict], reviewer: CycleReviewer) -> List[Dict]:
     logger.info("=" * 70)
     logger.info(f"End time: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"Total duration: {duration}")
-    logger.info(f"Results: {success_count} success, {skip_count} skipped, {error_count} errors")
+    logger.info(f"Results: {success_count} total ({new_evaluations} new in this run)")
+    logger.info(f"  Skipped: {skip_count}, Errors: {error_count}")
     logger.info(f"Incremental results saved to: {incremental_file}")
-    logger.info(f"  ✓ Safe to resume from this file if needed")
-    logger.info(f"Success rate: {success_count/total*100:.1f}%")
-    if success_count > 0:
-        logger.info(f"Average time per paper: {duration.total_seconds()/success_count:.2f}s")
+    logger.info(f"  ✓ Safe to resume from this file if interrupted")
+    if new_evaluations > 0:
+        logger.info(f"Average time per paper: {duration.total_seconds()/new_evaluations:.2f}s")
 
     return results
 
@@ -505,6 +581,44 @@ def main():
     logger.info(f"  TRAIN_DATASET: {TRAIN_DATASET}")
     logger.info(f"  TEST_DATASET:  {TEST_DATASET}")
     logger.info(f"  OUTPUT_DIR:    {OUTPUT_DIR}")
+
+    # Check for resume
+    resume_file = None
+    existing_results = []
+    completed_keys = set()
+
+    if RESUME_FROM:
+        resume_file = Path(RESUME_FROM)
+        if resume_file.exists():
+            logger.info(f"  RESUME_FROM:   {resume_file}")
+        else:
+            logger.warning(f"  RESUME_FROM file not found: {resume_file}")
+            resume_file = None
+    else:
+        # Auto-detect: find latest incremental file
+        latest_file = find_latest_incremental_file()
+        if latest_file:
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info("RESUME DETECTION")
+            logger.info("=" * 70)
+            logger.info(f"Found existing incremental file: {latest_file}")
+            logger.info(f"  Modified: {datetime.fromtimestamp(latest_file.stat().st_mtime)}")
+
+            # Ask user (or auto-resume based on config)
+            # For now, auto-resume if file is less than 24 hours old
+            file_age_hours = (datetime.now().timestamp() - latest_file.stat().st_mtime) / 3600
+            if file_age_hours < 24:
+                logger.info(f"  File age: {file_age_hours:.1f} hours (< 24h, auto-resuming)")
+                resume_file = latest_file
+            else:
+                logger.info(f"  File age: {file_age_hours:.1f} hours (> 24h, starting fresh)")
+                logger.info(f"  To resume manually, set RESUME_FROM = \"{latest_file}\"")
+
+    if resume_file:
+        existing_results, completed_keys = load_completed_results(resume_file)
+        logger.info(f"  Will skip {len(completed_keys)} already-completed evaluations")
+
     logger.info("")
 
     # Load datasets
@@ -534,6 +648,11 @@ def main():
     if actual_total != expected_total:
         logger.warning(f"  ⚠️  Mismatch! Difference: {actual_total - expected_total}")
 
+    if completed_keys:
+        remaining = actual_total - len(completed_keys)
+        logger.info(f"  Already done: {len(completed_keys)}")
+        logger.info(f"  Remaining:    {remaining}")
+
     # Initialize reviewer
     logger.info("")
     logger.info("=" * 70)
@@ -544,12 +663,18 @@ def main():
     reviewer = CycleReviewer(model_size=MODEL_SIZE)
     logger.info("✓ CycleReviewer initialized successfully")
 
-    # Evaluate papers
+    # Evaluate papers (with resume support)
     logger.info("")
     logger.info("=" * 70)
     logger.info("STEP 4: Evaluating papers")
     logger.info("=" * 70)
-    results = evaluate_papers(sampled_papers, reviewer)
+    results = evaluate_papers(
+        sampled_papers,
+        reviewer,
+        resume_file=resume_file,
+        existing_results=existing_results,
+        completed_keys=completed_keys
+    )
 
     # Save results
     logger.info("")
