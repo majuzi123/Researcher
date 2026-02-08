@@ -74,11 +74,40 @@ def create_output_dir(output_dir: Path) -> Path:
     return output_path
 
 
+def fix_confidence_column(df):
+    """Fix confidence column to ensure it's a float and robust to bad data"""
+    def to_float(x):
+        if isinstance(x, list):
+            # 只处理全为数字的 list
+            numeric = []
+            for i in x:
+                if isinstance(i, (int, float)):
+                    numeric.append(float(i))
+                elif isinstance(i, str):
+                    try:
+                        numeric.append(float(i))
+                    except Exception:
+                        continue
+            return float(np.mean(numeric)) if numeric else np.nan
+        if isinstance(x, (int, float)):
+            return float(x)
+        if isinstance(x, str):
+            try:
+                return float(x)
+            except Exception:
+                return np.nan
+        return np.nan
+    df['confidence'] = df['confidence'].apply(to_float)
+    return df
+
+
 def analyze_overall_statistics(df: pd.DataFrame, output_path: Path):
     """Generate overall statistics"""
     print("\n" + "="*70)
     print("OVERALL STATISTICS")
     print("="*70)
+
+    df = fix_confidence_column(df)
 
     stats_dict = {
         'total_papers': len(df),
@@ -91,12 +120,7 @@ def analyze_overall_statistics(df: pd.DataFrame, output_path: Path):
             'q25': df['avg_rating'].quantile(0.25),
             'q75': df['avg_rating'].quantile(0.75)
         },
-        'aspect_ratings': {
-            'originality': df['originality'].mean(),
-            'quality': df['quality'].mean(),
-            'clarity': df['clarity'].mean(),
-            'significance': df['significance'].mean()
-        },
+        # 移除aspect_ratings
         'decision_distribution': df['paper_decision'].value_counts().to_dict(),
         'variant_distribution': df['variant_type'].value_counts().to_dict(),
         'confidence_mean': df['confidence'].mean()
@@ -108,9 +132,7 @@ def analyze_overall_statistics(df: pd.DataFrame, output_path: Path):
     for key, value in stats_dict['rating_statistics'].items():
         print(f"  {key.capitalize()}: {value:.2f}")
 
-    print(f"\nAspect Ratings (Average):")
-    for aspect, value in stats_dict['aspect_ratings'].items():
-        print(f"  {aspect.capitalize()}: {value:.2f}")
+    # 移除Aspect Ratings (Average)
 
     print(f"\nDecision Distribution:")
     for decision, count in stats_dict['decision_distribution'].items():
@@ -142,10 +164,7 @@ def analyze_by_variant(df: pd.DataFrame, output_path: Path):
             'count': len(variant_df),
             'avg_rating_mean': variant_df['avg_rating'].mean(),
             'avg_rating_std': variant_df['avg_rating'].std(),
-            'originality': variant_df['originality'].mean(),
-            'quality': variant_df['quality'].mean(),
-            'clarity': variant_df['clarity'].mean(),
-            'significance': variant_df['significance'].mean(),
+            # 移除originality, quality, clarity, significance
             'accept_rate': (variant_df['paper_decision'].str.contains('Accept', case=False).sum() / len(variant_df) * 100),
             'reject_rate': (variant_df['paper_decision'].str.contains('Reject', case=False).sum() / len(variant_df) * 100)
         }
@@ -192,10 +211,7 @@ def analyze_by_rating_range(df: pd.DataFrame, output_path: Path):
             'rating_range': rating_label,
             'count': len(rating_df),
             'percentage': (len(rating_df) / len(df)) * 100,
-            'avg_originality': rating_df['originality'].mean(),
-            'avg_quality': rating_df['quality'].mean(),
-            'avg_clarity': rating_df['clarity'].mean(),
-            'avg_significance': rating_df['significance'].mean(),
+            # 移除avg_originality, avg_quality, avg_clarity, avg_significance
             'top_variant': max(variant_dist.items(), key=lambda x: x[1])[0] if variant_dist else 'N/A',
             'variant_distribution': variant_dist
         }
@@ -230,30 +246,24 @@ def compare_original_vs_variants(df: pd.DataFrame, output_path: Path):
             'avg_rating': original_df['avg_rating'].mean(),
             'rating_std': original_df['avg_rating'].std(),
             'accept_rate': (original_df['paper_decision'].str.contains('Accept', case=False).sum() / len(original_df) * 100) if len(original_df) > 0 else 0,
-            'originality': original_df['originality'].mean() if len(original_df) > 0 else 0,
-            'quality': original_df['quality'].mean() if len(original_df) > 0 else 0,
-            'clarity': original_df['clarity'].mean() if len(original_df) > 0 else 0,
-            'significance': original_df['significance'].mean() if len(original_df) > 0 else 0
         },
         'variants': {
             'count': len(variants_df),
             'avg_rating': variants_df['avg_rating'].mean() if len(variants_df) > 0 else 0,
             'rating_std': variants_df['avg_rating'].std() if len(variants_df) > 0 else 0,
             'accept_rate': (variants_df['paper_decision'].str.contains('Accept', case=False).sum() / len(variants_df) * 100) if len(variants_df) > 0 else 0,
-            'originality': variants_df['originality'].mean() if len(variants_df) > 0 else 0,
-            'quality': variants_df['quality'].mean() if len(variants_df) > 0 else 0,
-            'clarity': variants_df['clarity'].mean() if len(variants_df) > 0 else 0,
-            'significance': variants_df['significance'].mean() if len(variants_df) > 0 else 0
         }
     }
 
     # Statistical test
     if len(original_df) > 0 and len(variants_df) > 0:
         t_stat, p_value = stats.ttest_ind(original_df['avg_rating'], variants_df['avg_rating'])
+        # 转换numpy.bool_为Python bool
+        significant = bool(p_value < 0.05)
         comparison['statistical_test'] = {
-            't_statistic': t_stat,
-            'p_value': p_value,
-            'significant': p_value < 0.05
+            't_statistic': float(t_stat),
+            'p_value': float(p_value),
+            'significant': significant
         }
 
     # Print
@@ -419,9 +429,7 @@ def generate_detailed_report(df: pd.DataFrame, output_path: Path,
         for key, value in overall_stats['rating_statistics'].items():
             f.write(f"  {key.capitalize()}: {value:.2f}\n")
 
-        f.write("\nAspect Ratings (Average):\n")
-        for aspect, value in overall_stats['aspect_ratings'].items():
-            f.write(f"  {aspect.capitalize()}: {value:.2f}\n")
+        # 移除Aspect Ratings (Average)
 
         f.write("\nDecision Distribution:\n")
         for decision, count in overall_stats['decision_distribution'].items():
@@ -438,11 +446,7 @@ def generate_detailed_report(df: pd.DataFrame, output_path: Path,
             f.write(f"  Count: {row['count']}\n")
             f.write(f"  Average Rating: {row['avg_rating_mean']:.2f} ± {row['avg_rating_std']:.2f}\n")
             f.write(f"  Accept Rate: {row['accept_rate']:.1f}%\n")
-            f.write(f"  Reject Rate: {row['reject_rate']:.1f}%\n")
-            f.write(f"  Originality: {row['originality']:.2f}\n")
-            f.write(f"  Quality: {row['quality']:.2f}\n")
-            f.write(f"  Clarity: {row['clarity']:.2f}\n")
-            f.write(f"  Significance: {row['significance']:.2f}\n\n")
+            f.write(f"  Reject Rate: {row['reject_rate']:.1f}%\n\n")
 
         # Top and bottom rated papers
         f.write("\n" + "="*70 + "\n")
