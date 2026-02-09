@@ -1,0 +1,156 @@
+{
+  "timestamp": "20260210_002427",
+  "total_papers": 2561,
+  "config": {
+    "sample_size": 100,
+    "seed": 42,
+    "model_size": "8B"
+  },
+  "attack_analysis": {
+    "total_papers": 2561,
+    "by_attack_type": {
+      "instruction": {
+        "count": 494,
+        "avg_rating": 5.047604588394062,
+        "median_rating": 5.0,
+        "std_rating": 0.8691494562484128,
+        "accept_rate": 0.27125506072874495,
+        "decision_dist": {
+          "Reject": 360,
+          "Accept": 134
+        }
+      },
+      "direct": {
+        "count": 491,
+        "avg_rating": 5.259775967413442,
+        "median_rating": 5.25,
+        "std_rating": 0.8560744238059712,
+        "accept_rate": 0.3319755600814664,
+        "decision_dist": {
+          "Reject": 328,
+          "Accept": 163
+        }
+      },
+      "none": {
+        "count": 99,
+        "avg_rating": 4.512626262626263,
+        "median_rating": 4.5,
+        "std_rating": 1.067477080821292,
+        "accept_rate": 0.10101010101010101,
+        "decision_dist": {
+          "Reject": 89,
+          "Accept": 10
+        }
+      },
+      "polite": {
+        "count": 493,
+        "avg_rating": 4.943002028397566,
+        "median_rating": 5.0,
+        "std_rating": 0.9317659134544213,
+        "accept_rate": 0.21703853955375255,
+        "decision_dist": {
+          "Reject": 386,
+          "Accept": 107
+        }
+      },
+      "hidden": {
+        "count": 491,
+        "avg_rating": 5.163374066530889,
+        "median_rating": 5.25,
+        "std_rating": 0.8853013108743447,
+        "accept_rate": 0.31568228105906315,
+        "decision_dist": {
+          "Reject": 336,
+          "Accept": 155
+        }
+      },
+      "persuasive": {
+        "count": 493,
+        "avg_rating": 4.916227180527383,
+        "median_rating": 5.0,
+        "std_rating": 0.940479879406604,
+        "accept_rate": 0.24543610547667344,
+        "decision_dist": {
+          "Accept": 121,
+          "Reject": 372
+        }
+      }
+    },
+    "by_attack_position": {
+      "abstract": {
+        "count": 493,
+        "avg_rating": 5.067849898580122,
+        "median_rating": 5.0,
+        "accept_rate": 0.29006085192697767
+      },
+      "introduction": {
+        "count": 489,
+        "avg_rating": 5.074744376278119,
+        "median_rating": 5.0,
+        "accept_rate": 0.25357873210633947
+      },
+      "experiments": {
+        "count": 492,
+        "avg_rating": 5.011415989159891,
+        "median_rating": 5.0,
+        "accept_rate": 0.26422764227642276
+      },
+      "methods": {
+        "count": 493,
+        "avg_rating": 4.951555104800541,
+        "median_rating": 5.0,
+        "accept_rate": 0.22920892494929007
+      },
+      "none": {
+        "count": 99,
+        "avg_rating": 4.512626262626263,
+        "median_rating": 4.5,
+        "accept_rate": 0.10101010101010101
+      },
+      "conclusion": {
+        "count": 495,
+        "avg_rating": 5.222525252525252,
+        "median_rating": 5.25,
+        "accept_rate": 0.3434343434343434
+      }
+    },
+    "by_variant": {},
+    "attack_effectiveness": {
+      "instruction": {
+        "avg_rating_change": 0.5460463531015678,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.5971370143149284,
+        "negative_effect_rate": 0.26993865030674846,
+        "no_effect_rate": 0.1329243353783231
+      },
+      "direct": {
+        "avg_rating_change": 0.7459876543209877,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.6707818930041153,
+        "negative_effect_rate": 0.17695473251028807,
+        "no_effect_rate": 0.1522633744855967
+      },
+      "polite": {
+        "avg_rating_change": 0.4326844262295082,
+        "median_rating_change": 0.25,
+        "positive_effect_rate": 0.555327868852459,
+        "negative_effect_rate": 0.29508196721311475,
+        "no_effect_rate": 0.14959016393442623
+      },
+      "hidden": {
+        "avg_rating_change": 0.6439643347050754,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.6296296296296297,
+        "negative_effect_rate": 0.2139917695473251,
+        "no_effect_rate": 0.15637860082304528
+      },
+      "persuasive": {
+        "avg_rating_change": 0.3897540983606557,
+        "median_rating_change": 0.25,
+        "positive_effect_rate": 0.5491803278688525,
+        "negative_effect_rate": 0.29713114754098363,
+        "no_effect_rate": 0.15368852459016394
+      }
+    }
+  }
+}
