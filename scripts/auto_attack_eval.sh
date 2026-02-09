@@ -22,8 +22,8 @@ set -o pipefail
 WORK_DIR="$HOME/Researcher"
 SCRIPT="scripts/batch_evaluate_attacks.py"
 GENERATE_SCRIPT="scripts/generate_attack_dataset.py"
-MAX_RETRIES=20
-RETRY_DELAY=30
+MAX_RETRIES=9999999999999  # 无限重试
+RETRY_DELAY=5         # 等5秒就重连
 CHECK_INTERVAL=60
 
 # 目标评估数量: 100篇论文 × 26变体 = 2600
@@ -35,7 +35,7 @@ OAR_WALLTIME="12:00:00"
 OAR_RESOURCES="host=1/gpu=1"
 
 # 节点轮询列表（按优先顺序）
-NODE_LIST=("esterel37" "esterel44" "esterel42" "esterel35" "esterel17" "esterel33" "esterel34" "esterel36" "esterel38" "esterel39" "esterel40" "esterel41" "esterel43")
+NODE_LIST=("esterel38" "esterel37" "esterel44" "esterel42" "esterel35" "esterel17" "esterel33" "esterel34" "esterel36" "esterel39" "esterel40" "esterel41" "esterel43")
 NODE_INDEX=0
 NODE_COUNT=${#NODE_LIST[@]}
 
@@ -96,8 +96,6 @@ is_done() {
 get_next_node() {
     # 获取当前节点
     local current_node=${NODE_LIST[$NODE_INDEX]}
-    # 移动到下一个节点（循环）
-    NODE_INDEX=$(( (NODE_INDEX + 1) % NODE_COUNT ))
     echo "$current_node"
 }
 
@@ -143,16 +141,13 @@ EOFSCRIPT
 }
 
 submit_job() {
+    local OAR_PARTITION="$1"
     local job_script=$(mktemp "$LOG_DIR/attack_job_XXXXXX.sh")
     create_job_script "$job_script"
 
-    # 获取当前要尝试的节点
-    local current_node=$(get_next_node)
-    local OAR_PARTITION="$current_node"
-
     log "提交 OAR 任务..."
     log "  队列: $OAR_QUEUE"
-    log "  节点: $OAR_PARTITION (index: $((NODE_INDEX == 0 ? NODE_COUNT - 1 : NODE_INDEX - 1))/${NODE_COUNT})"
+    log "  节点: $OAR_PARTITION (index: $NODE_INDEX/${NODE_COUNT})"
     log "  资源: $OAR_RESOURCES"
     log "  时长: $OAR_WALLTIME"
 
@@ -192,6 +187,7 @@ submit_job() {
     # 监控任务
     log "监控任务 $job_id ..."
     local last_count=$(get_completed_count)
+    local waiting_time=0
 
     while true; do
         sleep $CHECK_INTERVAL
@@ -222,6 +218,18 @@ submit_job() {
                 log "任务结束，状态: $status"
                 rm -f "$job_script"
                 return 2  # 表示需要重试
+                ;;
+            Waiting)
+                waiting_time=$((waiting_time + CHECK_INTERVAL))
+                if [ $waiting_time -ge 60 ]; then
+                    log "Waiting 超过1分钟，自动结束任务并切换节点"
+                    oardel "$job_id"
+                    rm -f "$job_script"
+                    return 2
+                fi
+                ;;
+            Running|Finishing)
+                waiting_time=0
                 ;;
         esac
     done
@@ -269,10 +277,12 @@ retry=0
 while [ $retry -lt $MAX_RETRIES ]; do
     retry=$((retry + 1))
 
+    # 获取当前节点
+    current_node=$(get_next_node)
     log ""
     log "=========================================="
     log "第 $retry / $MAX_RETRIES 次尝试"
-    log "下一个节点: ${NODE_LIST[$NODE_INDEX]}"
+    log "下一个节点: $current_node (index: $NODE_INDEX/${NODE_COUNT})"
     log "=========================================="
 
     current_count=$(get_completed_count)
@@ -285,8 +295,14 @@ while [ $retry -lt $MAX_RETRIES ]; do
     fi
 
     # 提交并监控任务
-    submit_job
+    submit_job "$current_node"
     submit_result=$?
+
+    # 节点索引自增（循环）
+    NODE_INDEX=$((NODE_INDEX + 1))
+    if [ $NODE_INDEX -ge $NODE_COUNT ]; then
+        NODE_INDEX=0
+    fi
 
     current_count=$(get_completed_count)
     log "本次完成: $((current_count - initial_count)) 篇 (总计: $current_count / $TARGET_COUNT)"
@@ -303,6 +319,7 @@ while [ $retry -lt $MAX_RETRIES ]; do
 
     log "等待 ${RETRY_DELAY}s 后重新申请节点..."
     sleep $RETRY_DELAY
+
 done
 
 # 最终统计
