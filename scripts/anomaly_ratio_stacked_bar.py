@@ -492,6 +492,34 @@ plt.savefig(f'{outdir}/typical_cases_line.png')
 plt.close()
 print(f"Saved typical cases line chart to {outdir}/typical_cases_line.png")
 
+# ========== 典型案例变体全折线图 ==========
+# 挑选Reject→Accept且分数升高最多的前2个base_paper_id
+num_typical = 2
+if reject_accept_cases_sorted:
+    typical_ids = [c['base_paper_id'] for c in reject_accept_cases_sorted[:num_typical]]
+    for paper_id in typical_ids:
+        # 获取该论文所有变体
+        variants = df_dec[df_dec['base_paper_id']==paper_id]
+        variant_types = variants['variant_type'].tolist()
+        scores = variants['rating'].tolist()
+        decisions = variants['decision'].tolist()
+        # 画折线图
+        fig, ax = plt.subplots(figsize=(12,6))
+        x = np.arange(len(variant_types))
+        ax.plot(x, scores, marker='o', color='blue', label='Score')
+        for i, (vt, s, d) in enumerate(zip(variant_types, scores, decisions)):
+            ax.text(i, s, d, color='red' if d=='Accept' else 'black', fontsize=10, ha='center', va='bottom')
+        ax.set_xticks(x)
+        ax.set_xticklabels(variant_types, rotation=30, ha='right')
+        ax.set_title(f'Typical Case: All Variants Score & Decision ({paper_id})')
+        ax.set_ylabel('Score')
+        ax.set_xlabel('Variant Type')
+        ax.legend()
+        plt.tight_layout()
+        plt.savefig(f'{outdir}/typical_case_variants_line_{paper_id}.png')
+        plt.close()
+        print(f"Saved typical case variants line chart for {paper_id} to {outdir}/typical_case_variants_line_{paper_id}.png")
+
 # ========== 按原始决策分组分析（高分/中分/低分） ==========
 grouped_stats = {}
 for dec_cat in ['Accept','Reject']:
