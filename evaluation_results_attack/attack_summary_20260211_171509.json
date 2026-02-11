@@ -1,0 +1,156 @@
+{
+  "timestamp": "20260211_171509",
+  "total_papers": 2600,
+  "config": {
+    "sample_size": 100,
+    "seed": 42,
+    "model_size": "8B"
+  },
+  "attack_analysis": {
+    "total_papers": 2600,
+    "by_attack_type": {
+      "hidden": {
+        "count": 500,
+        "avg_rating": 5.162933333333333,
+        "median_rating": 5.25,
+        "std_rating": 0.8962299224672367,
+        "accept_rate": 0.312,
+        "decision_dist": {
+          "Reject": 344,
+          "Accept": 156
+        }
+      },
+      "none": {
+        "count": 100,
+        "avg_rating": 4.5025,
+        "median_rating": 4.5,
+        "std_rating": 1.066888589603555,
+        "accept_rate": 0.1,
+        "decision_dist": {
+          "Reject": 90,
+          "Accept": 10
+        }
+      },
+      "polite": {
+        "count": 500,
+        "avg_rating": 4.9373,
+        "median_rating": 5.0,
+        "std_rating": 0.9335076770794832,
+        "accept_rate": 0.216,
+        "decision_dist": {
+          "Reject": 392,
+          "Accept": 108
+        }
+      },
+      "instruction": {
+        "count": 500,
+        "avg_rating": 5.049033333333333,
+        "median_rating": 5.0,
+        "std_rating": 0.8655506785077588,
+        "accept_rate": 0.27,
+        "decision_dist": {
+          "Reject": 365,
+          "Accept": 135
+        }
+      },
+      "persuasive": {
+        "count": 500,
+        "avg_rating": 4.9019,
+        "median_rating": 5.0,
+        "std_rating": 0.9566094256207037,
+        "accept_rate": 0.244,
+        "decision_dist": {
+          "Accept": 122,
+          "Reject": 378
+        }
+      },
+      "direct": {
+        "count": 500,
+        "avg_rating": 5.2561,
+        "median_rating": 5.25,
+        "std_rating": 0.861174217022391,
+        "accept_rate": 0.332,
+        "decision_dist": {
+          "Reject": 334,
+          "Accept": 166
+        }
+      }
+    },
+    "by_attack_position": {
+      "abstract": {
+        "count": 500,
+        "avg_rating": 5.0439,
+        "median_rating": 5.0,
+        "accept_rate": 0.284
+      },
+      "introduction": {
+        "count": 500,
+        "avg_rating": 5.0871,
+        "median_rating": 5.0,
+        "accept_rate": 0.254
+      },
+      "experiments": {
+        "count": 500,
+        "avg_rating": 5.008733333333334,
+        "median_rating": 5.0,
+        "accept_rate": 0.262
+      },
+      "none": {
+        "count": 100,
+        "avg_rating": 4.5025,
+        "median_rating": 4.5,
+        "accept_rate": 0.1
+      },
+      "methods": {
+        "count": 500,
+        "avg_rating": 4.950233333333333,
+        "median_rating": 5.0,
+        "accept_rate": 0.228
+      },
+      "conclusion": {
+        "count": 500,
+        "avg_rating": 5.2173,
+        "median_rating": 5.25,
+        "accept_rate": 0.346
+      }
+    },
+    "by_variant": {},
+    "attack_effectiveness": {
+      "hidden": {
+        "avg_rating_change": 0.6604333333333333,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.634,
+        "negative_effect_rate": 0.212,
+        "no_effect_rate": 0.154
+      },
+      "polite": {
+        "avg_rating_change": 0.4348,
+        "median_rating_change": 0.25,
+        "positive_effect_rate": 0.556,
+        "negative_effect_rate": 0.296,
+        "no_effect_rate": 0.148
+      },
+      "instruction": {
+        "avg_rating_change": 0.5465333333333333,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.596,
+        "negative_effect_rate": 0.268,
+        "no_effect_rate": 0.136
+      },
+      "persuasive": {
+        "avg_rating_change": 0.3994,
+        "median_rating_change": 0.25,
+        "positive_effect_rate": 0.55,
+        "negative_effect_rate": 0.3,
+        "no_effect_rate": 0.15
+      },
+      "direct": {
+        "avg_rating_change": 0.7536,
+        "median_rating_change": 0.5,
+        "positive_effect_rate": 0.676,
+        "negative_effect_rate": 0.176,
+        "no_effect_rate": 0.148
+      }
+    }
+  }
+}
