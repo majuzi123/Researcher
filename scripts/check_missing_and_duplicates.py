@@ -4,8 +4,8 @@ from collections import Counter, defaultdict
 
 # 文件路径
 RESULTS_PATH1 = '../evaluation_results/evaluation_results_20260206_224300_incremental.jsonl'
-RESULTS_PATH2 = '../evaluation_results/evaluation_results_20260207_115647_merged.jsonl'
-SUMMARY_PATH = '../evaluation_results/evaluation_summary_20260207_115647.json'
+RESULTS_PATH2 = '../evaluation_results/evaluation_results_20260212_054243.jsonl'
+SUMMARY_PATH = '../evaluation_results/evaluation_summary_20260212_054243.json'
 
 # 读取 summary 文件，获取理论 base_paper_id × variant_type
 with open(SUMMARY_PATH, 'r', encoding='utf-8') as f:
