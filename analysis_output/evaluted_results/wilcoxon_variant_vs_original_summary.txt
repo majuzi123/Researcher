@@ -1,0 +1,17 @@
+Wilcoxon Signed-Rank Test: variant vs original
+input_jsonl: ../evaluation_results/evaluation_results_20260212_054243.jsonl
+alternative: two-sided
+num_variants_tested: 5
+
+Columns:
+- n_pairs: number of paired papers with both original and variant ratings
+- n_nonzero: number of non-zero differences used by Wilcoxon
+- rank_biserial_correlation: effect size (positive means variant tends to score higher)
+- p_value_holm / p_value_bh_fdr: multiple-testing corrected p-values
+
+   variant_type  n_pairs  n_nonzero  median_diff_variant_minus_original  mean_diff_variant_minus_original  rank_biserial_correlation  wilcoxon_statistic  p_value_raw note  p_value_holm  p_value_bh_fdr
+ no_experiments      100         72                              -0.250                           -0.4125                  -0.487062               674.0     0.000312           0.001561        0.001561
+     no_methods      100         85                              -0.375                           -0.3350                  -0.343092              1200.5     0.005765           0.023061        0.012555
+no_introduction      100         86                              -0.375                           -0.3000                  -0.330393              1252.5     0.007533           0.023061        0.012555
+  no_conclusion      100         76                               0.000                            0.1050                   0.182160              1196.5     0.165764           0.331529        0.207205
+    no_abstract      100         79                               0.000                            0.0650                   0.078165              1456.5     0.544613           0.544613        0.544613
