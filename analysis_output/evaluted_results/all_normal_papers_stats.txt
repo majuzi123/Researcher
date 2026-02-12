@@ -1,3 +1,4 @@
-全正常论文数量: 31
+统计标准: no_experiments/no_methods/no_introduction < 0; no_abstract/no_conclusion <= 0
+全正常论文数量: 17
 总论文数量: 100
-全正常论文比例: 31.00%
+全正常论文比例: 17.00%

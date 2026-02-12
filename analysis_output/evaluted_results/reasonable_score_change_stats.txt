@@ -1,3 +1,4 @@
-合理降分论文数量: 41
+统计标准: no_experiments/no_methods/no_introduction < 0; no_abstract/no_conclusion <= 0
+合理降分论文数量: 17
 总论文数量: 100
-合理降分论文比例: 41.00%
+合理降分论文比例: 17.00%

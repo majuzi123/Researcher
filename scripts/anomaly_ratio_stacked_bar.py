@@ -335,21 +335,51 @@ print(f"Saved score-decision change stacked plot to {outdir}/score_decision_chan
 # 导出案例
 pd.DataFrame(score_decision_cases).to_csv(f'{outdir}/score_decision_change_cases.csv', index=False)
 
-# ========== 评分变化热力图正常论文统计 ==========
+# ========== 评分变化热力图正常论文统计（严格标准） ==========
 # 构建评分变化矩阵（与热力图一致）
 pivot = df_dec.pivot_table(index='base_paper_id', columns='variant_type', values='rating')
 score_diff = pivot.subtract(pivot['original'], axis=0)
 score_diff = score_diff.drop(columns=['original'])
-# 统计每篇论文所有变体分数变化是否都≤0
-all_normal_mask = (score_diff <= 0).all(axis=1)
-all_normal_papers = score_diff[all_normal_mask]
+# 严格标准：
+# no_experiment(s)/no_methods/no_introduction 必须 < 0
+# no_abstract/no_conclusion 必须 <= 0
+experiment_col = 'no_experiments' if 'no_experiments' in score_diff.columns else (
+    'no_experiment' if 'no_experiment' in score_diff.columns else None
+)
+strict_columns = {
+    'no_abstract': 'le',
+    'no_introduction': 'lt',
+    'no_methods': 'lt',
+    'no_conclusion': 'le'
+}
+if experiment_col is not None:
+    strict_columns[experiment_col] = 'lt'
+missing_variants = [v for v in ['no_abstract', 'no_introduction', 'no_methods', 'no_conclusion'] if v not in score_diff.columns]
+if experiment_col is None:
+    missing_variants.append('no_experiment(s)')
+if missing_variants:
+    print(f"Warning: strict criterion skipped missing variants: {missing_variants}")
+
+strict_actual_variants = [v for v in strict_columns if v in score_diff.columns]
+score_diff_strict = score_diff[strict_actual_variants].dropna()
+all_normal_mask = pd.Series(True, index=score_diff_strict.index)
+for col, op in strict_columns.items():
+    if col not in score_diff_strict.columns:
+        continue
+    if op == 'lt':
+        all_normal_mask = all_normal_mask & (score_diff_strict[col] < 0)
+    else:
+        all_normal_mask = all_normal_mask & (score_diff_strict[col] <= 0)
+all_normal_papers = score_diff_strict[all_normal_mask]
 num_all_normal = all_normal_papers.shape[0]
-total_papers = score_diff.shape[0]
+total_papers = score_diff_strict.shape[0]
 percent_all_normal = num_all_normal / total_papers if total_papers else 0
 # 导出全正常论文base_paper_id及分数变化
 all_normal_papers.to_csv(f'{outdir}/all_normal_papers_score_diff.csv')
 # 输出统计结果
 with open(f'{outdir}/all_normal_papers_stats.txt', 'w', encoding='utf-8') as f:
+    exp_label = experiment_col if experiment_col is not None else 'no_experiment(s)'
+    f.write(f'统计标准: {exp_label}/no_methods/no_introduction < 0; no_abstract/no_conclusion <= 0\n')
     f.write(f'全正常论文数量: {num_all_normal}\n')
     f.write(f'总论文数量: {total_papers}\n')
     f.write(f'全正常论文比例: {percent_all_normal:.2%}\n')
@@ -361,7 +391,7 @@ labels_pie = ['All Normal Papers', 'Papers with Anomaly']
 sizes = [num_all_normal, total_papers-num_all_normal]
 colors_pie = ['#99ff99','#ff9999']
 ax.pie(sizes, labels=labels_pie, autopct='%1.1f%%', colors=colors_pie, startangle=90)
-ax.set_title('Proportion of Papers with All Variants Normal')
+ax.set_title('Proportion of Papers Satisfying Strict Criterion')
 plt.tight_layout()
 plt.savefig(f'{outdir}/all_normal_papers_pie.png')
 plt.close()
@@ -381,24 +411,48 @@ plt.savefig(f'{outdir}/score_change_heatmap_all_papers.png')
 plt.close()
 print(f"Saved score change heatmap for all papers to {outdir}/score_change_heatmap_all_papers.png")
 
-# ========== 变体合理降分论文统计 ==========
-# 自动过滤不存在的列，避免 KeyError
-required_variants = ['no_abstract','no_experiments','no_introduction','no_methods','no_conclusion']
-actual_variants = [v for v in required_variants if v in score_diff.columns]
-score_diff_req = score_diff[actual_variants].dropna()
-mask = (
-    (score_diff_req['no_abstract'] < 0) if 'no_abstract' in score_diff_req else True
-    and (score_diff_req['no_experiments'] < 0) if 'no_experiments' in score_diff_req else True
-    and (score_diff_req['no_introduction'] < 0) if 'no_introduction' in score_diff_req else True
-    and (score_diff_req['no_methods'] < 0) if 'no_methods' in score_diff_req else True
-    and (score_diff_req['no_conclusion'] <= 0) if 'no_conclusion' in score_diff_req else True
+# ========== 变体合理降分论文统计（严格标准） ==========
+# 严格规则：
+# no_experiment(s)/no_methods/no_introduction 必须 < 0
+# no_abstract/no_conclusion 必须 <= 0
+experiment_col = 'no_experiments' if 'no_experiments' in score_diff.columns else (
+    'no_experiment' if 'no_experiment' in score_diff.columns else None
 )
+strict_columns = {
+    'no_abstract': 'le',
+    'no_introduction': 'lt',
+    'no_methods': 'lt',
+    'no_conclusion': 'le'
+}
+if experiment_col is not None:
+    strict_columns[experiment_col] = 'lt'
+
+required_core = ['no_abstract', 'no_introduction', 'no_methods', 'no_conclusion']
+missing_variants = [v for v in required_core if v not in score_diff.columns]
+if experiment_col is None:
+    missing_variants.append('no_experiment(s)')
+if missing_variants:
+    print(f"Warning: strict criterion skipped missing variants: {missing_variants}")
+
+actual_variants = [v for v in strict_columns if v in score_diff.columns]
+score_diff_req = score_diff[actual_variants].dropna()
+mask = pd.Series(True, index=score_diff_req.index)
+for col, op in strict_columns.items():
+    if col not in score_diff_req.columns:
+        continue
+    if op == 'lt':
+        mask = mask & (score_diff_req[col] < 0)
+    else:
+        mask = mask & (score_diff_req[col] <= 0)
+
 reasonable_papers = score_diff_req[mask]
 num_reasonable = reasonable_papers.shape[0]
 total_req_papers = score_diff_req.shape[0]
 percent_reasonable = num_reasonable / total_req_papers if total_req_papers else 0
 reasonable_papers.to_csv(f'{outdir}/reasonable_score_change_papers.csv')
 with open(f'{outdir}/reasonable_score_change_stats.txt', 'w', encoding='utf-8') as f:
+    exp_label = experiment_col if experiment_col is not None else 'no_experiment(s)'
+    f.write(f'统计标准: {exp_label}/no_methods/no_introduction < 0; no_abstract/no_conclusion <= 0\n')
     f.write(f'合理降分论文数量: {num_reasonable}\n')
     f.write(f'总论文数量: {total_req_papers}\n')
     f.write(f'合理降分论文比例: {percent_reasonable:.2%}\n')
