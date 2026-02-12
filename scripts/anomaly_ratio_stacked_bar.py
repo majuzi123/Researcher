@@ -273,31 +273,42 @@ for base_id, group in df_dec.groupby('base_paper_id'):
                 'rating': row['rating']
             })
 
-# 统计比例
-score_decision_ratio = {vt: {'up': [], 'down': [], 'same': []} for vt in score_decision_stats}
+# 统计比例（按决策类别名存储，避免绘图阶段顺序错位）
+score_decision_ratio = {vt: {'up': {}, 'down': {}, 'same': {}} for vt in score_decision_stats}
 for vt in score_decision_stats:
     for score_cat in ['up','down','same']:
         total = score_decision_stats[vt][score_cat]['total']
         if total == 0:
-            score_decision_ratio[vt][score_cat] = [0,0,0,0]
+            score_decision_ratio[vt][score_cat] = {
+                'ac2re': 0,
+                're2ac': 0,
+                'ac2ac': 0,
+                're2re': 0
+            }
         else:
-            score_decision_ratio[vt][score_cat] = [
-                score_decision_stats[vt][score_cat]['ac2re']/total,
-                score_decision_stats[vt][score_cat]['re2ac']/total,
-                score_decision_stats[vt][score_cat]['ac2ac']/total,
-                score_decision_stats[vt][score_cat]['re2re']/total
-            ]
+            score_decision_ratio[vt][score_cat] = {
+                'ac2re': score_decision_stats[vt][score_cat]['ac2re']/total,
+                're2ac': score_decision_stats[vt][score_cat]['re2ac']/total,
+                'ac2ac': score_decision_stats[vt][score_cat]['ac2ac']/total,
+                're2re': score_decision_stats[vt][score_cat]['re2re']/total
+            }
 
 # 绘制堆叠柱状图：每种变体类型，分数升高/降低/不变时决策变化比例
 score_cats = ['up','down','same']
 score_cat_labels = {'up':'Score Up','down':'Score Down','same':'Score Same'}
-decision_labels = ['ac2re','re2ac','ac2ac','re2re']
-decision_colors = {'ac2re':'#ff9999','re2ac':'#66b3ff','ac2ac':'#99ff99','re2re':'#cccccc'}
+# 交通灯顺序（由下到上）：深绿 -> 浅绿 -> 橙 -> 红
+decision_labels = ['re2re','ac2re','ac2ac','re2ac']
+decision_colors = {
+    're2re': '#1b5e20',   # dark green
+    'ac2re': '#8bc34a',   # light green
+    'ac2ac': '#ff9800',   # orange
+    're2ac': '#d32f2f'    # red
+}
 fig, axes = plt.subplots(1, 3, figsize=(22,7))
 for i, score_cat in enumerate(score_cats):
     bottoms = np.zeros(len(labels))
-    for j, dec_cat in enumerate(decision_labels):
-        values = [score_decision_ratio[vt][score_cat][j] for vt in labels]
+    for dec_cat in decision_labels:
+        values = [score_decision_ratio[vt][score_cat][dec_cat] for vt in labels]
         axes[i].bar(labels, values, bar_width, bottom=bottoms, label=dec_cat, color=decision_colors[dec_cat])
         bottoms += np.array(values)
     axes[i].set_ylim(0,1)
