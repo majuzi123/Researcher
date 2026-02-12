@@ -34,6 +34,8 @@ df = df[df['rating'].notnull()]
 
 # 保证 original 在所有图表中最左边
 variant_order = sorted(df['variant_type'].unique(), key=lambda x: (x != 'original', x))
+# 报告展示顺序（由轻到重）
+severity_order = ['no_conclusion', 'no_abstract', 'no_introduction', 'no_experiments', 'no_methods']
 
 # 计算每个变体的异常、未修改、正常反应比例
 anomaly_counts = {v: 0 for v in variant_order if v != 'original'}
@@ -58,32 +60,36 @@ for base_id, group in df.groupby('base_paper_id'):
         else:
             normal_counts[vt] += 1
 
-# 计算比例
-anomaly_ratio = []
-unmod_ratio = []
-normal_ratio = []
+# 计算比例（先按变体名保存，再按报告顺序取出）
+ratio_by_variant = {}
 for vt in variant_order:
     if vt == 'original':
         continue
     total = total_counts[vt]
     if total == 0:
-        anomaly_ratio.append(0)
-        unmod_ratio.append(0)
-        normal_ratio.append(0)
+        ratio_by_variant[vt] = {'anomaly': 0, 'unmod': 0, 'normal': 0}
     else:
-        anomaly_ratio.append(anomaly_counts[vt]/total)
-        unmod_ratio.append(unmod_counts[vt]/total)
-        normal_ratio.append(normal_counts[vt]/total)
+        ratio_by_variant[vt] = {
+            'anomaly': anomaly_counts[vt]/total,
+            'unmod': unmod_counts[vt]/total,
+            'normal': normal_counts[vt]/total
+        }
 
 # 绘制堆叠柱状图
 import matplotlib
 matplotlib.use('Agg')
-labels = [vt for vt in variant_order if vt != 'original']
+non_original_variants = [vt for vt in variant_order if vt != 'original']
+labels = [vt for vt in severity_order if vt in non_original_variants] + \
+         [vt for vt in non_original_variants if vt not in severity_order]
+anomaly_ratio = [ratio_by_variant[vt]['anomaly'] for vt in labels]
+unmod_ratio = [ratio_by_variant[vt]['unmod'] for vt in labels]
+normal_ratio = [ratio_by_variant[vt]['normal'] for vt in labels]
 bar_width = 0.6
 fig, ax = plt.subplots(figsize=(10,6))
-ax.bar(labels, unmod_ratio, bar_width, label='Un-modified', color='orange')
-ax.bar(labels, normal_ratio, bar_width, bottom=unmod_ratio, label='Normal Reaction (Decreased)', color='green')
-ax.bar(labels, anomaly_ratio, bar_width, bottom=np.array(unmod_ratio)+np.array(normal_ratio), label='Anomaly', color='red')
+# 交通灯式顺序：绿（正常）在底，橙（轻异常/不变）在中，红（异常）在顶
+ax.bar(labels, normal_ratio, bar_width, label='Normal Reaction (Decreased)', color='green')
+ax.bar(labels, unmod_ratio, bar_width, bottom=normal_ratio, label='Un-modified (Mild Anomaly)', color='orange')
+ax.bar(labels, anomaly_ratio, bar_width, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Anomaly', color='red')
 ax.set_ylabel('Ratio')
 ax.set_ylim(0,1)
 ax.set_title('Stacked Anomaly/Normal/Un-modified Ratio by Variant Type')
@@ -195,9 +201,9 @@ print(f"Saved plot and case csvs to {outdir}")
 # ========== 合并大图：异常比例堆叠柱状图 + 极端异常/异常 Accept 分组柱状图 ==========
 fig, axes = plt.subplots(1, 2, figsize=(18, 7))
 # 左侧：异常比例堆叠柱状图
-axes[0].bar(labels, unmod_ratio, bar_width, label='Un-modified', color='orange')
-axes[0].bar(labels, normal_ratio, bar_width, bottom=unmod_ratio, label='Normal Reaction (Decreased)', color='green')
-axes[0].bar(labels, anomaly_ratio, bar_width, bottom=np.array(unmod_ratio)+np.array(normal_ratio), label='Anomaly', color='red')
+axes[0].bar(labels, normal_ratio, 0.6, label='Normal Reaction (Decreased)', color='green')
+axes[0].bar(labels, unmod_ratio, 0.6, bottom=normal_ratio, label='Un-modified (Mild Anomaly)', color='orange')
+axes[0].bar(labels, anomaly_ratio, 0.6, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Anomaly', color='red')
 axes[0].set_ylabel('Ratio')
 axes[0].set_ylim(0,1)
 axes[0].set_title('Stacked Anomaly/Normal/Un-modified Ratio')
