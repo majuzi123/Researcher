@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 # 输出目录
-outdir = f'../analysis_output/{datetime.now().strftime("%Y%m%d_%H%M%S")}'
+outdir = f'../analysis_output/evaluted_results'
 os.makedirs(outdir, exist_ok=True)
 
 # 读取数据
-jsonl_path = '../evaluation_results/evaluation_results_20260207_115647_merged.jsonl'
+jsonl_path = '../evaluation_results/evaluation_results_20260212_054243.jsonl'
 records = []
 with open(jsonl_path, 'r', encoding='utf-8') as f:
     for line in f:
