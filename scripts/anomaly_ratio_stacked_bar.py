@@ -1,5 +1,7 @@
 import os
 import json
+import re
+import textwrap
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -108,16 +110,27 @@ with open(jsonl_path, 'r', encoding='utf-8') as f:
         r = json.loads(line)
         base_id = r.get('base_paper_id')
         variant = r.get('variant_type')
+        title = r.get('title')
         rating = None
         decision = None
+        meta_review = None
+        strengths = None
+        weaknesses = None
         if isinstance(r.get('evaluation'), dict):
             rating = r['evaluation'].get('avg_rating')
             decision = r['evaluation'].get('paper_decision')
+            meta_review = r['evaluation'].get('meta_review')
+            strengths = r['evaluation'].get('strength')
+            weaknesses = r['evaluation'].get('weaknesses')
         rows.append({
             'base_paper_id': base_id,
             'variant_type': variant,
             'rating': rating,
-            'decision': decision
+            'decision': decision,
+            'title': title,
+            'meta_review': meta_review,
+            'strengths': strengths,
+            'weaknesses': weaknesses
         })
 df_dec = pd.DataFrame(rows)
 df_dec = df_dec[df_dec['rating'].notnull()]
@@ -577,25 +590,62 @@ plt.close()
 print(f"Saved typical cases line chart to {outdir}/typical_cases_line.png")
 
 # ========== 典型案例变体全折线图 ==========
-# 挑选Reject→Accept且分数升高最多的前2个base_paper_id
+# 挑选Reject→Accept且分数升高最多的前2个base_paper_id，并补充固定关注案例
 num_typical = 2
-if reject_accept_cases_sorted:
-    typical_ids = [c['base_paper_id'] for c in reject_accept_cases_sorted[:num_typical]]
+forced_typical_ids = ['JlSyXwCEIQ', 'GSBHKiw19c']
+typical_ids = [c['base_paper_id'] for c in reject_accept_cases_sorted[:num_typical]] if reject_accept_cases_sorted else []
+for forced_id in forced_typical_ids:
+    if forced_id not in typical_ids:
+        typical_ids.append(forced_id)
+
+def _clean_base_title(raw_title):
+    if not isinstance(raw_title, str):
+        return ''
+    # 去掉标题末尾的变体后缀，例如 "[no_methods]"
+    return re.sub(r'\s*\[[^\]]+\]\s*$', '', raw_title).strip()
+
+if typical_ids:
+    combined_cases = []
     for paper_id in typical_ids:
-        # 获取该论文所有变体
-        variants = df_dec[df_dec['base_paper_id']==paper_id]
-        variant_types = variants['variant_type'].tolist()
+        variants = df_dec[df_dec['base_paper_id'] == paper_id].copy()
+        if variants.empty:
+            print(f"Warning: no data for forced/typical paper_id={paper_id}")
+            continue
+
+        # 固定变体顺序：original优先，其余按全局严重度顺序
+        ordered_variant_types = ['original'] + [v for v in severity_order if v in variants['variant_type'].values]
+        other_variants = [v for v in variants['variant_type'].values if v not in ordered_variant_types]
+        ordered_variant_types.extend(sorted(set(other_variants)))
+        variants['variant_type'] = pd.Categorical(variants['variant_type'], categories=ordered_variant_types, ordered=True)
+        variants = variants.sort_values('variant_type')
+
+        variant_types = variants['variant_type'].astype(str).tolist()
         scores = variants['rating'].tolist()
         decisions = variants['decision'].tolist()
+        base_title = ''
+        orig_row = variants[variants['variant_type'].astype(str) == 'original']
+        if not orig_row.empty:
+            base_title = _clean_base_title(orig_row.iloc[0]['title'])
+        if not base_title:
+            base_title = _clean_base_title(variants.iloc[0]['title'])
+        title_snapshot = textwrap.fill(base_title, width=78) if base_title else '(title unavailable)'
+        combined_cases.append({
+            'paper_id': paper_id,
+            'variant_types': variant_types,
+            'scores': scores,
+            'decisions': decisions,
+            'title_snapshot': title_snapshot
+        })
+
         # 画折线图
-        fig, ax = plt.subplots(figsize=(12,6))
+        fig, ax = plt.subplots(figsize=(14, 6))
         x = np.arange(len(variant_types))
         ax.plot(x, scores, marker='o', color='blue', label='Score')
         for i, (vt, s, d) in enumerate(zip(variant_types, scores, decisions)):
-            ax.text(i, s, d, color='red' if d=='Accept' else 'black', fontsize=10, ha='center', va='bottom')
+            ax.text(i, s, d, color='red' if d == 'Accept' else 'black', fontsize=10, ha='center', va='bottom')
         ax.set_xticks(x)
         ax.set_xticklabels(variant_types, rotation=30, ha='right')
-        ax.set_title(f'Typical Case: All Variants Score & Decision ({paper_id})')
+        ax.set_title(f'Typical Case: All Variants Score & Decision ({paper_id})\n{title_snapshot}')
         ax.set_ylabel('Score')
         ax.set_xlabel('Variant Type')
         ax.legend()
@@ -603,6 +653,37 @@ if reject_accept_cases_sorted:
         plt.savefig(f'{outdir}/typical_case_variants_line_{paper_id}.png')
         plt.close()
         print(f"Saved typical case variants line chart for {paper_id} to {outdir}/typical_case_variants_line_{paper_id}.png")
+
+        # 导出该论文所有变体的review快照，便于人工检查“新生成review”内容
+        review_snapshot = variants[['base_paper_id', 'variant_type', 'title', 'rating', 'decision', 'meta_review', 'strengths', 'weaknesses']].copy()
+        review_snapshot.to_csv(f'{outdir}/typical_case_reviews_{paper_id}.csv', index=False)
+        print(f"Saved typical case review snapshot for {paper_id} to {outdir}/typical_case_reviews_{paper_id}.csv")
+
+    # 合并图：最多展示4个典型论文，方便横向对比
+    combined_cases = combined_cases[:4]
+    if combined_cases:
+        fig, axes = plt.subplots(2, 2, figsize=(22, 12))
+        axes = axes.flatten()
+        for i, case in enumerate(combined_cases):
+            ax = axes[i]
+            x = np.arange(len(case['variant_types']))
+            ax.plot(x, case['scores'], marker='o', color='blue', linewidth=2)
+            for j, (s, d) in enumerate(zip(case['scores'], case['decisions'])):
+                ax.text(j, s, d, color='red' if d == 'Accept' else 'black', fontsize=8, ha='center', va='bottom')
+            ax.set_xticks(x)
+            ax.set_xticklabels(case['variant_types'], rotation=30, ha='right', fontsize=8)
+            short_title = textwrap.shorten(case['title_snapshot'].replace('\n', ' '), width=95, placeholder='...')
+            ax.set_title(f"{case['paper_id']}\n{short_title}", fontsize=10)
+            ax.set_ylabel('Score')
+            ax.set_xlabel('Variant Type')
+            ax.set_ylim(0, max(7, np.nanmax(case['scores']) + 0.5))
+        for j in range(len(combined_cases), 4):
+            axes[j].axis('off')
+        fig.suptitle('Typical Cases: All Variants Score & Decision (Combined View)', fontsize=14)
+        plt.tight_layout(rect=(0, 0, 1, 0.96))
+        plt.savefig(f'{outdir}/typical_case_variants_line_combined_4papers.png')
+        plt.close()
+        print(f"Saved combined typical cases chart to {outdir}/typical_case_variants_line_combined_4papers.png")
 
 # ========== 按原始决策分组分析（高分/中分/低分） ==========
 grouped_stats = {}
