@@ -122,12 +122,12 @@ with open(jsonl_path, 'r', encoding='utf-8') as f:
 df_dec = pd.DataFrame(rows)
 df_dec = df_dec[df_dec['rating'].notnull()]
 
-# 统计每种变体的 Reject->Accept 和 Accept->Accept
+# 统计每种变体的决策变化构成（re2re/ac2re/ac2ac/re2ac）
 variant_order = sorted(df_dec['variant_type'].unique(), key=lambda x: (x != 'original', x))
-extreme_abnormal_counts = {v: 0 for v in variant_order if v != 'original'}  # Reject->Accept
-abnormal_accept_counts = {v: 0 for v in variant_order if v != 'original'}    # Accept->Accept
-total_reject = {v: 0 for v in variant_order if v != 'original'}
-total_accept = {v: 0 for v in variant_order if v != 'original'}
+decision_change_counts = {
+    v: {'re2re': 0, 'ac2re': 0, 'ac2ac': 0, 're2ac': 0, 'total': 0}
+    for v in variant_order if v != 'original'
+}
 extreme_abnormal_cases = []
 abnormal_accept_cases = []
 
@@ -140,54 +140,68 @@ for base_id, group in df_dec.groupby('base_paper_id'):
         vt = row['variant_type']
         if vt == 'original':
             continue
-        # Reject->Accept
-        if orig_dec == 'Reject':
-            total_reject[vt] += 1
-            if row['decision'] == 'Accept':
-                extreme_abnormal_counts[vt] += 1
-                extreme_abnormal_cases.append({
-                    'base_paper_id': base_id,
-                    'variant_type': vt,
-                    'orig_decision': orig_dec,
-                    'variant_decision': row['decision'],
-                    'rating': row['rating']
-                })
-        # Accept->Accept
-        if orig_dec == 'Accept':
-            total_accept[vt] += 1
-            if row['decision'] == 'Accept':
-                abnormal_accept_counts[vt] += 1
-                abnormal_accept_cases.append({
-                    'base_paper_id': base_id,
-                    'variant_type': vt,
-                    'orig_decision': orig_dec,
-                    'variant_decision': row['decision'],
-                    'rating': row['rating']
-                })
+        var_dec = row['decision']
+        if orig_dec == 'Reject' and var_dec == 'Reject':
+            decision_change_counts[vt]['re2re'] += 1
+        elif orig_dec == 'Accept' and var_dec == 'Reject':
+            decision_change_counts[vt]['ac2re'] += 1
+        elif orig_dec == 'Accept' and var_dec == 'Accept':
+            decision_change_counts[vt]['ac2ac'] += 1
+            abnormal_accept_cases.append({
+                'base_paper_id': base_id,
+                'variant_type': vt,
+                'orig_decision': orig_dec,
+                'variant_decision': var_dec,
+                'rating': row['rating']
+            })
+        elif orig_dec == 'Reject' and var_dec == 'Accept':
+            decision_change_counts[vt]['re2ac'] += 1
+            extreme_abnormal_cases.append({
+                'base_paper_id': base_id,
+                'variant_type': vt,
+                'orig_decision': orig_dec,
+                'variant_decision': var_dec,
+                'rating': row['rating']
+            })
+        else:
+            continue
+        decision_change_counts[vt]['total'] += 1
 
-# 计算比例
-extreme_abnormal_ratio = []
-abnormal_accept_ratio = []
-for vt in variant_order:
-    if vt == 'original':
-        continue
-    total_r = total_reject[vt]
-    total_a = total_accept[vt]
-    extreme_abnormal_ratio.append(extreme_abnormal_counts[vt]/total_r if total_r else 0)
-    abnormal_accept_ratio.append(abnormal_accept_counts[vt]/total_a if total_a else 0)
+# 计算比例（分母为该变体下全部有效样本）
+non_original_variants = [vt for vt in variant_order if vt != 'original']
+labels = [vt for vt in severity_order if vt in non_original_variants] + \
+         [vt for vt in non_original_variants if vt not in severity_order]
+re2re_ratio = []
+ac2re_ratio = []
+ac2ac_ratio = []
+re2ac_ratio = []
+for vt in labels:
+    total = decision_change_counts[vt]['total']
+    if total == 0:
+        re2re_ratio.append(0)
+        ac2re_ratio.append(0)
+        ac2ac_ratio.append(0)
+        re2ac_ratio.append(0)
+    else:
+        re2re_ratio.append(decision_change_counts[vt]['re2re']/total)
+        ac2re_ratio.append(decision_change_counts[vt]['ac2re']/total)
+        ac2ac_ratio.append(decision_change_counts[vt]['ac2ac']/total)
+        re2ac_ratio.append(decision_change_counts[vt]['re2ac']/total)
+
+# 兼容后续组合图中原变量名
+extreme_abnormal_ratio = re2ac_ratio
+abnormal_accept_ratio = ac2ac_ratio
 
 # 绘图
-labels = [vt for vt in variant_order if vt != 'original']
-bar_width = 0.35
-x = np.arange(len(labels))
+bar_width = 0.6
 fig, ax = plt.subplots(figsize=(10,6))
-rects1 = ax.bar(x-bar_width/2, extreme_abnormal_ratio, bar_width, label='Reject→Accept (Extreme Abnormal)', color='purple')
-rects2 = ax.bar(x+bar_width/2, abnormal_accept_ratio, bar_width, label='Accept→Accept (Abnormal)', color='blue')
+ax.bar(labels, re2re_ratio, bar_width, label='Reject→Reject', color='#1b5e20')  # dark green
+ax.bar(labels, ac2re_ratio, bar_width, bottom=re2re_ratio, label='Accept→Reject', color='#8bc34a')  # light green
+ax.bar(labels, ac2ac_ratio, bar_width, bottom=np.array(re2re_ratio)+np.array(ac2re_ratio), label='Accept→Accept (Abnormal)', color='#ff9800')  # orange
+ax.bar(labels, re2ac_ratio, bar_width, bottom=np.array(re2re_ratio)+np.array(ac2re_ratio)+np.array(ac2ac_ratio), label='Reject→Accept (Extreme Abnormal)', color='#d32f2f')  # red
 ax.set_ylabel('Ratio')
 ax.set_ylim(0,1)
-ax.set_title('Extreme Abnormal (Reject→Accept) and Abnormal Accept (Accept→Accept) Ratio by Variant Type')
-ax.set_xticks(x)
-ax.set_xticklabels(labels)
+ax.set_title('Decision Change Composition by Variant Type')
 ax.legend()
 plt.tight_layout()
 plt.savefig(f'{outdir}/extreme_abnormal_accept_ratio_by_variant.png')
@@ -208,15 +222,14 @@ axes[0].set_ylabel('Ratio')
 axes[0].set_ylim(0,1)
 axes[0].set_title('Stacked Anomaly/Normal/Un-modified Ratio')
 axes[0].legend()
-# 右侧：Reject→Accept/Accept→Accept异常比例分组柱状图
-x = np.arange(len(labels))
-axes[1].bar(x-bar_width/2, extreme_abnormal_ratio, bar_width, label='Reject→Accept (Extreme Abnormal)', color='purple')
-axes[1].bar(x+bar_width/2, abnormal_accept_ratio, bar_width, label='Accept→Accept (Abnormal)', color='blue')
+# 右侧：决策变化构成堆叠柱状图（交通灯顺序）
+axes[1].bar(labels, re2re_ratio, 0.6, label='Reject→Reject', color='#1b5e20')
+axes[1].bar(labels, ac2re_ratio, 0.6, bottom=re2re_ratio, label='Accept→Reject', color='#8bc34a')
+axes[1].bar(labels, ac2ac_ratio, 0.6, bottom=np.array(re2re_ratio)+np.array(ac2re_ratio), label='Accept→Accept (Abnormal)', color='#ff9800')
+axes[1].bar(labels, re2ac_ratio, 0.6, bottom=np.array(re2re_ratio)+np.array(ac2re_ratio)+np.array(ac2ac_ratio), label='Reject→Accept (Extreme Abnormal)', color='#d32f2f')
 axes[1].set_ylabel('Ratio')
 axes[1].set_ylim(0,1)
-axes[1].set_title('Extreme Abnormal & Abnormal Accept Ratio')
-axes[1].set_xticks(x)
-axes[1].set_xticklabels(labels)
+axes[1].set_title('Decision Change Composition')
 axes[1].legend()
 plt.tight_layout()
 plt.savefig(f'{outdir}/combined_variant_analysis.png')
