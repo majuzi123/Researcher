@@ -1,0 +1,15 @@
+【敏感论文统计结论】
+敏感论文平均原始分数: 2.92
+敏感论文原始分数中位数: 3.00
+敏感论文原始决策分布: 
+base_decision
+Reject    20
+Name: count, dtype: int64
+全体论文平均原始分数: 4.50
+全体论文原始分数中位数: 4.50
+全体论文原始决策分布: 
+base_decision
+Reject    90
+Accept    10
+Name: count, dtype: int64
+结论: 敏感论文普遍原始分数较低，原始决策多为reject，说明分数低、质量较差的论文更容易被攻击影响。

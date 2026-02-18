@@ -1,6 +1,6 @@
 # Attack 图表说明与计算逻辑
 
-- 输入文件: `evaluation_results_attack\attack_results_20260208_000302_incremental.jsonl`
+- 输入文件: `/Users/maying/PycharmProjects/pythonProject/Researcher/evaluation_results_attack/attack_results_20260211_171509.jsonl`
 - baseline 论文数: `100`
 - attack 样本数: `2500`
 

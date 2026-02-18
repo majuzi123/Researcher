@@ -15,6 +15,7 @@ import argparse
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Tuple
 
 import matplotlib
 matplotlib.use("Agg")
@@ -76,7 +77,7 @@ def decision_to_binary(decision: str) -> float:
     return np.nan
 
 
-def build_attack_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def build_attack_dataframe(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     base = df[(df["attack_type"] == "none") | (df["attack_position"] == "none") | (df["variant_type"] == "original")].copy()
     base = (
         base.sort_values(["base_paper_id"])
@@ -535,6 +536,116 @@ def write_plot_explanation_doc(input_file: Path, base_df: pd.DataFrame, attack_d
     (outdir / "PLOT_EXPLANATION_CN.md").write_text("\n".join(lines), encoding="utf-8")
 
 
+def analyze_sensitive_papers(base_df, attack_df, output_dir):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import pandas as pd
+    from pathlib import Path
+    import numpy as np
+
+    # 1. 计算每篇论文的mean_delta等统计量
+    per_paper = (
+        attack_df.groupby("base_paper_id")
+        .agg(
+            mean_delta=("rating_delta", "mean"),
+            std_delta=("rating_delta", "std"),
+            max_delta=("rating_delta", "max"),
+            min_delta=("rating_delta", "min"),
+            base_rating=("base_rating", "first"),
+            base_decision=("base_decision", "first"),
+        )
+        .reset_index()
+    )
+    # 2. 选取敏感论文样本（改为前20篇）
+    top_sensitive = per_paper.sort_values("mean_delta", ascending=False).head(20)
+    top_sensitive_path = Path(output_dir) / "top20_sensitive_papers.csv"
+    top_sensitive.to_csv(top_sensitive_path, index=False)
+    print(f"Top 20敏感论文已保存: {top_sensitive_path}")
+
+    # 3. base_rating与mean_delta散点图
+    plt.figure(figsize=(8,6))
+    sns.scatterplot(data=per_paper, x="base_rating", y="mean_delta", hue="base_decision", alpha=0.7)
+    plt.title("Base Rating vs Mean Attack Delta (per paper)")
+    plt.xlabel("Base Rating")
+    plt.ylabel("Mean Delta")
+    plt.legend(title="Base Decision")
+    plt.tight_layout()
+    fig_path = Path(output_dir) / "base_rating_vs_mean_delta.png"
+    plt.savefig(fig_path)
+    plt.close()
+    print(f"Scatter plot saved: {fig_path}")
+
+    # 4. base_rating分布直方图（所有论文 & 敏感论文）
+    plt.figure(figsize=(8,5))
+    sns.histplot(per_paper["base_rating"], bins=20, color="gray", label="All Papers", kde=True, alpha=0.4)
+    sns.histplot(top_sensitive["base_rating"], bins=10, color="red", label="Sensitive Papers", kde=True, alpha=0.7)
+    plt.xlabel("Base Rating")
+    plt.ylabel("Count")
+    plt.title("Base Rating Distribution: Sensitive vs All Papers")
+    plt.legend()
+    plt.tight_layout()
+    hist_path = Path(output_dir) / "base_rating_hist_sensitive_vs_all.png"
+    plt.savefig(hist_path)
+    plt.close()
+    print(f"Histogram saved: {hist_path}")
+
+    # 5. 敏感论文决策分布
+    decision_counts = top_sensitive["base_decision"].value_counts()
+    plt.figure(figsize=(5,4))
+    decision_counts.plot(kind="bar", color="#ff7043")
+    plt.title("Sensitive Papers: Base Decision Distribution")
+    plt.xlabel("Base Decision")
+    plt.ylabel("Count")
+    plt.tight_layout()
+    dec_path = Path(output_dir) / "sensitive_paper_decision_bar.png"
+    plt.savefig(dec_path)
+    plt.close()
+    print(f"Decision bar plot saved: {dec_path}")
+
+    # 6. 输出统计结论并写入txt
+    conclusion_lines = []
+    conclusion_lines.append("【敏感论文统计结论】\n")
+    conclusion_lines.append(f"敏感论文平均原始分数: {top_sensitive['base_rating'].mean():.2f}\n")
+    conclusion_lines.append(f"敏感论文原始分数中位数: {top_sensitive['base_rating'].median():.2f}\n")
+    conclusion_lines.append(f"敏感论文原始决策分布: \n{decision_counts}\n")
+    conclusion_lines.append(f"全体论文平均原始分数: {per_paper['base_rating'].mean():.2f}\n")
+    conclusion_lines.append(f"全体论文原始分数中位数: {per_paper['base_rating'].median():.2f}\n")
+    conclusion_lines.append(f"全体论文原始决策分布: \n{per_paper['base_decision'].value_counts()}\n")
+    conclusion_lines.append("结论: 敏感论文普遍原始分数较低，原始决策多为reject，说明分数低、质量较差的论文更容易被攻击影响。\n")
+
+    # 7. 读取敏感论文原文片段（如有）并写入结论
+    # 尝试从attack_df中找到敏感论文的原始文本
+    try:
+        import json
+        attack_jsonl = None
+        # 自动寻找最新的attack_results_*.jsonl
+        from glob import glob
+        import os
+        attack_dir = os.path.join(str(output_dir).split("analysis_output")[0], "evaluation_results_attack")
+        jsonl_files = sorted(glob(os.path.join(attack_dir, "attack_results_*.jsonl")), key=os.path.getmtime, reverse=True)
+        if jsonl_files:
+            attack_jsonl = jsonl_files[0]
+        if attack_jsonl:
+            with open(attack_jsonl, 'r', encoding='utf-8') as f:
+                for line in f:
+                    rec = json.loads(line)
+                    base_id = rec.get('base_paper_id', '')
+                    if base_id in set(top_sensitive['base_paper_id']):
+                        title = rec.get('title', '')
+                        text = rec.get('text', '')
+                        if text:
+                            snippet = text[:600].replace('\n', ' ').replace('\r', ' ')
+                            conclusion_lines.append(f"\n【敏感论文示例: {title}】\n{text[:600]}...\n")
+    except Exception as e:
+        conclusion_lines.append(f"\n【原文片段读取失败: {e}】\n")
+
+    # 写入txt
+    txt_path = Path(output_dir) / "sensitive_paper_conclusion.txt"
+    with open(txt_path, 'w', encoding='utf-8') as f:
+        f.writelines(conclusion_lines)
+    print(f"敏感论文统计结论已写入: {txt_path}")
+
+
 def main():
     project_root = Path(__file__).resolve().parent.parent
     default_results_dir = project_root / "evaluation_results_attack"
@@ -560,6 +671,7 @@ def main():
     plot_charts(base_df, attack_df, output_dir)
     write_readme(input_file, base_df, attack_df, output_dir)
     write_plot_explanation_doc(input_file, base_df, attack_df, output_dir)
+    analyze_sensitive_papers(base_df, attack_df, output_dir)
 
     print(f"Analysis complete. Output directory: {output_dir}")
     print(f"Input file: {input_file}")
