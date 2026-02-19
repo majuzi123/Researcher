@@ -1,6 +1,6 @@
 # Attack 图表说明与计算逻辑
 
-- 输入文件: `/Users/maying/PycharmProjects/pythonProject/Researcher/evaluation_results_attack/attack_results_20260211_171509.jsonl`
+- 输入文件: `D:\Mike\PycharmProjects\Researcher\evaluation_results_attack\attack_results_20260211_171509.jsonl`
 - baseline 论文数: `100`
 - attack 样本数: `2500`
 
@@ -50,6 +50,8 @@
 计算逻辑: `pivot_table(..., values=base_paper_id, aggfunc=count)`。
 19. `box_rating_delta_section_found.png`（若存在）: 章节命中与未命中时的 `rating_delta` 对比。
 计算逻辑: x=section_found, y=rating_delta 的箱线图。
+20. `hist_top20_mean_delta.png`: Top20 敏感论文的 `mean_delta` 分布直方图。
+计算逻辑: 先按 `base_paper_id` 聚合得到 `mean_delta`，取前20后绘制直方图 + KDE。
 
 ## 关于横轴文本
 - 所有条形图/箱线图类图表都强制 `xticks(rotation=0)`，即横向显示标签。

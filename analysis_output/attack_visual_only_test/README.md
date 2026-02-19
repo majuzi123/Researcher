@@ -1,6 +1,6 @@
 # Attack Advanced Analysis Output
 
-- Input file: `/Users/maying/PycharmProjects/pythonProject/Researcher/evaluation_results_attack/attack_results_20260211_171509.jsonl`
+- Input file: `D:\Mike\PycharmProjects\Researcher\evaluation_results_attack\attack_results_20260211_171509.jsonl`
 - Base papers: `100`
 - Attack records: `2500`
 
@@ -22,4 +22,5 @@
 - `bar_accept_rate_by_attack_position.png`
 - `scatter_baseline_vs_delta.png`
 - `hist_mean_delta_per_paper.png`
+- `hist_top20_mean_delta.png`
 - `heatmap_count_type_position.png`

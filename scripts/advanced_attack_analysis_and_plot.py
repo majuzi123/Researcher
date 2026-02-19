@@ -238,7 +238,7 @@ def save_summary_tables(base_df: pd.DataFrame, attack_df: pd.DataFrame, outdir: 
     )
     _render_table_image(
         per_paper.sort_values("mean_delta", ascending=False).head(20),
-        "Top 20 Papers by Mean Attack Delta",
+        "Top 20 Sensitive Papers by Mean Attack Delta",
         outdir / "top20_papers_mean_delta_table.png",
     )
 
@@ -416,13 +416,17 @@ def plot_charts(base_df: pd.DataFrame, attack_df: pd.DataFrame, outdir: Path) ->
     plt.savefig(outdir / "scatter_baseline_vs_delta.png")
     plt.close()
 
-    # 11. Per-paper mean delta histogram
+    # 11. Per-paper mean delta histogram with Top20 overlay for comparison
     per_paper = attack_df.groupby("base_paper_id")["rating_delta"].mean()
+    top20_per_paper = per_paper.nlargest(20)
     plt.figure(figsize=(9, 6))
-    sns.histplot(per_paper, bins=30, kde=True)
+    sns.histplot(per_paper, bins=30, kde=True, color="gray", alpha=0.45, label="All papers")
+    sns.histplot(top20_per_paper, bins=10, kde=True, color="red", alpha=0.45, label="Top 20 sensitive papers")
     plt.axvline(0, color="red", linestyle="--", linewidth=1)
-    plt.title("Histogram: Mean Attack Delta per Paper")
+    plt.title("Mean Attack Delta Distribution: All vs Top 20 Sensitive")
     plt.xlabel("Mean Delta per Paper")
+    plt.ylabel("Count")
+    plt.legend()
     plt.tight_layout()
     plt.savefig(outdir / "hist_mean_delta_per_paper.png")
     plt.close()
@@ -465,6 +469,7 @@ def write_readme(input_file: Path, base_df: pd.DataFrame, attack_df: pd.DataFram
         "- `bar_accept_rate_by_attack_position.png`",
         "- `scatter_baseline_vs_delta.png`",
         "- `hist_mean_delta_per_paper.png`",
+        "- `hist_top20_mean_delta.png`",
         "- `heatmap_count_type_position.png`",
     ]
     if attack_df["section_found"].nunique() > 1:
@@ -529,6 +534,8 @@ def write_plot_explanation_doc(input_file: Path, base_df: pd.DataFrame, attack_d
         "计算逻辑: `pivot_table(..., values=base_paper_id, aggfunc=count)`。",
         "19. `box_rating_delta_section_found.png`（若存在）: 章节命中与未命中时的 `rating_delta` 对比。",
         "计算逻辑: x=section_found, y=rating_delta 的箱线图。",
+        "20. `hist_top20_mean_delta.png`: Top20 敏感论文的 `mean_delta` 分布直方图。",
+        "计算逻辑: 先按 `base_paper_id` 聚合得到 `mean_delta`，取前20后绘制直方图 + KDE。",
         "",
         "## 关于横轴文本",
         "- 所有条形图/箱线图类图表都强制 `xticks(rotation=0)`，即横向显示标签。",
@@ -561,6 +568,19 @@ def analyze_sensitive_papers(base_df, attack_df, output_dir):
     top_sensitive_path = Path(output_dir) / "top20_sensitive_papers.csv"
     top_sensitive.to_csv(top_sensitive_path, index=False)
     print(f"Top 20敏感论文已保存: {top_sensitive_path}")
+
+    # 2.1 Top20 mean_delta 分布图
+    plt.figure(figsize=(8, 5))
+    sns.histplot(top_sensitive["mean_delta"], bins=10, kde=True, color="#5B8FF9", alpha=0.75)
+    plt.axvline(0, color="red", linestyle="--", linewidth=1)
+    plt.xlabel("Mean Delta (Top 20 Sensitive Papers)")
+    plt.ylabel("Count")
+    plt.title("Distribution of Mean Delta for Top 20 Sensitive Papers")
+    plt.tight_layout()
+    top20_hist_path = Path(output_dir) / "hist_top20_mean_delta.png"
+    plt.savefig(top20_hist_path)
+    plt.close()
+    print(f"Top20 mean_delta histogram saved: {top20_hist_path}")
 
     # 3. base_rating与mean_delta散点图
     plt.figure(figsize=(8,6))
