@@ -89,9 +89,9 @@ normal_ratio = [ratio_by_variant[vt]['normal'] for vt in labels]
 bar_width = 0.6
 fig, ax = plt.subplots(figsize=(10,6))
 # 交通灯式顺序：绿（正常）在底，橙（轻异常/不变）在中，红（异常）在顶
-ax.bar(labels, normal_ratio, bar_width, label='Normal Reaction (Decreased)', color='green')
-ax.bar(labels, unmod_ratio, bar_width, bottom=normal_ratio, label='Un-modified (Mild Anomaly)', color='orange')
-ax.bar(labels, anomaly_ratio, bar_width, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Anomaly', color='red')
+ax.bar(labels, normal_ratio, bar_width, label='Down (Normal Reaction)', color='green')
+ax.bar(labels, unmod_ratio, bar_width, bottom=normal_ratio, label='Same (Un-modified)', color='orange')
+ax.bar(labels, anomaly_ratio, bar_width, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Up (Anomaly)', color='red')
 ax.set_ylabel('Ratio')
 ax.set_ylim(0,1)
 ax.set_title('Stacked Anomaly/Normal/Un-modified Ratio by Variant Type')
@@ -228,9 +228,9 @@ print(f"Saved plot and case csvs to {outdir}")
 # ========== 合并大图：异常比例堆叠柱状图 + 极端异常/异常 Accept 分组柱状图 ==========
 fig, axes = plt.subplots(1, 2, figsize=(18, 7))
 # 左侧：异常比例堆叠柱状图
-axes[0].bar(labels, normal_ratio, 0.6, label='Normal Reaction (Decreased)', color='green')
-axes[0].bar(labels, unmod_ratio, 0.6, bottom=normal_ratio, label='Un-modified (Mild Anomaly)', color='orange')
-axes[0].bar(labels, anomaly_ratio, 0.6, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Anomaly', color='red')
+axes[0].bar(labels, normal_ratio, 0.6, label='Down (Normal Reaction)', color='green')
+axes[0].bar(labels, unmod_ratio, 0.6, bottom=normal_ratio, label='Same (Un-modified)', color='orange')
+axes[0].bar(labels, anomaly_ratio, 0.6, bottom=np.array(normal_ratio)+np.array(unmod_ratio), label='Up (Anomaly)', color='red')
 axes[0].set_ylabel('Ratio')
 axes[0].set_ylim(0,1)
 axes[0].set_title('Stacked Anomaly/Normal/Un-modified Ratio')
