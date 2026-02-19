@@ -64,15 +64,35 @@ plt.savefig(f'{outdir}/boxplot_variant_type.png')
 plt.close()
 
 # 3. 个案折线图（高/中/低分各一篇）和决策变化合并到一张图
-med = df[df['variant_type']=='original']['rating'].median()
-high = df[df['variant_type']=='original']['rating'].max()
-low = df[df['variant_type']=='original']['rating'].min()
+orig_df = df[df['variant_type'] == 'original']
+med = orig_df['rating'].median()
+low = orig_df['rating'].min()
+
+# High案例优先选“高分且存在异常升分(variant > original)”的第一个；否则回退到最高分论文
+high_case_id = None
+for _, row in orig_df.sort_values('rating', ascending=False).iterrows():
+    base_id = row['base_paper_id']
+    orig_score = row['rating']
+    variants = df[(df['base_paper_id'] == base_id) & (df['variant_type'] != 'original')]
+    if not variants.empty and (variants['rating'] > orig_score).any():
+        high_case_id = base_id
+        break
+
+if high_case_id is None:
+    high = orig_df['rating'].max()
+    high_case = orig_df[orig_df['rating'] == high]
+    if not high_case.empty:
+        high_case_id = high_case.iloc[0]['base_paper_id']
 
 cases = []
-for score in [high, med, low]:
-    case = df[(df['variant_type']=='original') & (df['rating']==score)]
+if high_case_id is not None:
+    cases.append(high_case_id)
+for score in [med, low]:
+    case = orig_df[orig_df['rating'] == score]
     if not case.empty:
-        cases.append(case.iloc[0]['base_paper_id'])
+        cid = case.iloc[0]['base_paper_id']
+        if cid not in cases:
+            cases.append(cid)
 
 plt.figure(figsize=(10,6))
 for case_id, color, label in zip(cases, ['red','green','blue'], ['High','Median','Low']):

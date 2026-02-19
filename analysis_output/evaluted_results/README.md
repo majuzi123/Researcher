@@ -2,8 +2,10 @@
 本目录下所有统计图表均基于 merged.jsonl 数据自动生成，涵盖评分、决策、变体影响、极端值、分布等。
 
 ## 图表列表
+- all_normal_papers_pie.png
 - anomaly_count_by_variant.png
 - anomaly_ratio_by_variant.png
+- anomaly_ratio_by_variant_stacked.png
 - bar_decision_consistency_variant_type.png
 - bar_decision_ratio_variant_type.png
 - bar_mean_std_score_diff_variant_type.png
@@ -13,21 +15,30 @@
 - boxplot_variant_type.png
 - case_hml_decision_line.png
 - case_hml_line.png
+- combined_variant_analysis.png
 - decision_bar_no_abstract.png
 - decision_bar_no_conclusion.png
 - decision_bar_no_experiments.png
 - decision_bar_no_introduction.png
 - decision_bar_no_methods.png
+- decision_change_bar_accept_papers.png
+- decision_change_bar_reject_papers.png
 - decision_consistency_pie.png
 - density_score_diff_variant_type.png
 - density_variant_type.png
+- extreme_abnormal_accept_ratio_by_variant.png
 - extreme_score_scatter_no_abstract.png
 - extreme_score_scatter_no_conclusion.png
 - extreme_score_scatter_no_experiments.png
 - extreme_score_scatter_no_introduction.png
 - extreme_score_scatter_no_methods.png
 - line_mean_score_variant_type.png
+- reasonable_score_change_pie.png
 - score_change_heatmap.png
+- score_change_heatmap_accept_papers.png
+- score_change_heatmap_all_papers.png
+- score_change_heatmap_reject_papers.png
+- score_decision_change_stacked.png
 - score_diff_box_no_abstract.png
 - score_diff_box_no_conclusion.png
 - score_diff_box_no_experiments.png
@@ -40,6 +51,12 @@
 - score_hist_no_introduction.png
 - score_hist_no_methods.png
 - score_std_per_paper.png
+- typical_case_variants_line_4JtwtT4nYC.png
+- typical_case_variants_line_GSBHKiw19c.png
+- typical_case_variants_line_JlSyXwCEIQ.png
+- typical_case_variants_line_PCm1oT8pZI.png
+- typical_case_variants_line_combined_4papers.png
+- typical_cases_line.png
 
 ## 图表说明
 每张图下方有详细解读，说明其用途、观察方法和结论建议。
