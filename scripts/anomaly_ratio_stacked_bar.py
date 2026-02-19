@@ -319,6 +319,17 @@ for vt in score_decision_stats:
                 're2re': score_decision_stats[vt][score_cat]['re2re']/total
             }
 
+# 统计 Score Up/Down/Same 的全局占比（用于子图标题，三者和为1）
+score_cat_totals = {k: 0 for k in ['up', 'down', 'same']}
+for vt in score_decision_stats:
+    for score_cat in ['up', 'down', 'same']:
+        score_cat_totals[score_cat] += score_decision_stats[vt][score_cat]['total']
+score_cat_all_total = sum(score_cat_totals.values())
+if score_cat_all_total == 0:
+    score_cat_share = {k: 0.0 for k in ['up', 'down', 'same']}
+else:
+    score_cat_share = {k: score_cat_totals[k] / score_cat_all_total for k in ['up', 'down', 'same']}
+
 # 绘制堆叠柱状图：每种变体类型，分数升高/降低/不变时决策变化比例
 score_cats = ['up','down','same']
 score_cat_labels = {'up':'Score Up','down':'Score Down','same':'Score Same'}
@@ -338,7 +349,7 @@ for i, score_cat in enumerate(score_cats):
         axes[i].bar(labels, values, bar_width, bottom=bottoms, label=dec_cat, color=decision_colors[dec_cat])
         bottoms += np.array(values)
     axes[i].set_ylim(0,1)
-    axes[i].set_title(f'{score_cat_labels[score_cat]}: Decision Change Ratio')
+    axes[i].set_title(f"{score_cat_labels[score_cat]} ({score_cat_share[score_cat]:.1%}): Decision Change Ratio")
     axes[i].set_ylabel('Ratio')
     axes[i].legend()
 plt.tight_layout()
