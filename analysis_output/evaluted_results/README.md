@@ -8,6 +8,7 @@
 - anomaly_ratio_by_variant_stacked.png
 - bar_decision_consistency_variant_type.png
 - bar_decision_ratio_variant_type.png
+- bar_mean_std_combined_variant_type.png
 - bar_mean_std_score_diff_variant_type.png
 - bar_mean_std_variant_type.png
 - boxplot_by_decision.png
@@ -62,8 +63,8 @@
 每张图下方有详细解读，说明其用途、观察方法和结论建议。
 ### boxplot_variant_type.png
 各变体评分箱线图，original在最左，红线为original均值。可观察各变体分布、异常值、与原始论文的对比。
-### bar_mean_std_variant_type.png
-各变体评分均值/标准差柱状图，红线为original均值。可直观比较各变体均值和波动。
+### bar_mean_std_combined_variant_type.png
+双子图：左侧为各变体评分均值/标准差（红线为original均值），右侧为各变体评分变化均值/标准差（红线为无变化基准）；变体顺序统一为 conclusion/abstract/introduction/experiments/methods。
 ### density_variant_type.png
 各变体评分分布密度图，红线为original均值。可观察分布形态和偏移。
 ### bar_decision_ratio_variant_type.png
@@ -74,8 +75,6 @@
 原始与变体决策一致性分布条形图。可看出各变体决策变化比例。
 ### boxplot_score_diff_variant_type.png
 每种变体评分变化（变体-原始）分布箱线图，红线为无变化基准。
-### bar_mean_std_score_diff_variant_type.png
-每种变体评分变化均值/标准差柱状图，红线为无变化基准。
 ### density_score_diff_variant_type.png
 每种变体评分变化密度图，红线为无变化基准。
 ### bar_decision_change_variant_type.png

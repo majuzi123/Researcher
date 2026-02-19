@@ -242,16 +242,48 @@ plt.title('Score Change (Variant - Original)')
 plt.savefig(f'{outdir}/score_change_heatmap.png')
 plt.close()
 
-# 9. 各变体评分均值/标准差柱状图（横向x轴，original基准线）
-mean_std = df.groupby('variant_type')['rating'].agg(['mean','std']).reindex(variant_order).reset_index()
-plt.figure(figsize=(10,6))
-plt.bar(mean_std['variant_type'], mean_std['mean'], yerr=mean_std['std'], capsize=5)
-plt.axhline(orig_mean, color='red', linestyle='--', label=f'Original Mean: {orig_mean:.2f}')
-plt.title('Mean & Std of Scores by Variant Type')
-plt.ylabel('Score')
-plt.xticks(rotation=0)
-plt.legend()
-plt.savefig(f'{outdir}/bar_mean_std_variant_type.png')
+# 9&15. 合并图：评分均值/标准差 与 评分变化均值/标准差（统一变体顺序）
+variant_candidates = [v for v in df['variant_type'].dropna().unique() if v != 'original']
+experiments_key = 'no_experiments' if 'no_experiments' in variant_candidates else (
+    'no_experiment' if 'no_experiment' in variant_candidates else None
+)
+preferred_variant_order = ['no_conclusion', 'no_abstract', 'no_introduction']
+if experiments_key is not None:
+    preferred_variant_order.append(experiments_key)
+preferred_variant_order.append('no_methods')
+ordered_bar_variants = [v for v in preferred_variant_order if v in variant_candidates] + \
+    [v for v in variant_candidates if v not in preferred_variant_order]
+
+mean_std = (
+    df.groupby('variant_type')['rating']
+    .agg(['mean', 'std'])
+    .reindex(ordered_bar_variants)
+    .reset_index()
+)
+mean_std_diff = (
+    score_diff_df.groupby('variant_type')['score_diff']
+    .agg(['mean', 'std'])
+    .reindex(ordered_bar_variants)
+    .reset_index()
+)
+
+fig, axes = plt.subplots(1, 2, figsize=(18, 6))
+axes[0].bar(mean_std['variant_type'], mean_std['mean'], yerr=mean_std['std'], capsize=5)
+axes[0].axhline(orig_mean, color='red', linestyle='--', label=f'Original Mean: {orig_mean:.2f}')
+axes[0].set_title('Mean & Std of Scores by Variant Type')
+axes[0].set_ylabel('Score')
+axes[0].tick_params(axis='x', rotation=0)
+axes[0].legend()
+
+axes[1].bar(mean_std_diff['variant_type'], mean_std_diff['mean'], yerr=mean_std_diff['std'], capsize=5)
+axes[1].axhline(0, color='red', linestyle='--', label='No Change (Original)')
+axes[1].set_title('Mean & Std of Score Change by Variant Type')
+axes[1].set_ylabel('Score Change')
+axes[1].tick_params(axis='x', rotation=0)
+axes[1].legend()
+
+plt.tight_layout()
+plt.savefig(f'{outdir}/bar_mean_std_combined_variant_type.png')
 plt.close()
 
 # 10. 各变体评分分布密度图（original基准线）
@@ -305,17 +337,7 @@ plt.legend()
 plt.savefig(f'{outdir}/boxplot_score_diff_variant_type.png')
 plt.close()
 
-# 15. 每种变体评分变化均值/标准差柱状图（横向x轴）
-mean_std_diff = score_diff_df.groupby('variant_type')['score_diff'].agg(['mean','std']).reindex([v for v in variant_order if v != 'original']).reset_index()
-plt.figure(figsize=(10,6))
-plt.bar(mean_std_diff['variant_type'], mean_std_diff['mean'], yerr=mean_std_diff['std'], capsize=5)
-plt.axhline(0, color='red', linestyle='--', label='No Change (Original)')
-plt.title('Mean & Std of Score Change by Variant Type')
-plt.ylabel('Score Change')
-plt.xticks(rotation=0)
-plt.legend()
-plt.savefig(f'{outdir}/bar_mean_std_score_diff_variant_type.png')
-plt.close()
+# 15. 已与第9项合并到 bar_mean_std_combined_variant_type.png
 
 # 16. 每种变体评分变化密度图（original基准线）
 plt.figure(figsize=(10,6))
@@ -377,8 +399,8 @@ with open(f'{outdir}/README.md', 'w', encoding='utf-8') as f:
     f.write('每张图下方有详细解读，说明其用途、观察方法和结论建议。\n')
     f.write('### boxplot_variant_type.png\n')
     f.write('各变体评分箱线图，original在最左，红线为original均值。可观察各变体分布、异常值、与原始论文的对比。\n')
-    f.write('### bar_mean_std_variant_type.png\n')
-    f.write('各变体评分均值/标准差柱状图，红线为original均值。可直观比较各变体均值和波动。\n')
+    f.write('### bar_mean_std_combined_variant_type.png\n')
+    f.write('双子图：左侧为各变体评分均值/标准差（红线为original均值），右侧为各变体评分变化均值/标准差（红线为无变化基准）；变体顺序统一为 conclusion/abstract/introduction/experiments/methods。\n')
     f.write('### density_variant_type.png\n')
     f.write('各变体评分分布密度图，红线为original均值。可观察分布形态和偏移。\n')
     f.write('### bar_decision_ratio_variant_type.png\n')
@@ -389,8 +411,6 @@ with open(f'{outdir}/README.md', 'w', encoding='utf-8') as f:
     f.write('原始与变体决策一致性分布条形图。可看出各变体决策变化比例。\n')
     f.write('### boxplot_score_diff_variant_type.png\n')
     f.write('每种变体评分变化（变体-原始）分布箱线图，红线为无变化基准。\n')
-    f.write('### bar_mean_std_score_diff_variant_type.png\n')
-    f.write('每种变体评分变化均值/标准差柱状图，红线为无变化基准。\n')
     f.write('### density_score_diff_variant_type.png\n')
     f.write('每种变体评分变化密度图，红线为无变化基准。\n')
     f.write('### bar_decision_change_variant_type.png\n')
