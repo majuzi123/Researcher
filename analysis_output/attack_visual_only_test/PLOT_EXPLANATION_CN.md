@@ -34,6 +34,8 @@
 计算逻辑: `pivot_table(index=attack_type, columns=attack_position, values=rating_delta, aggfunc=mean)`。
 11. `heatmap_accept_rate_type_position.png`: 类型×位置 Accept 率热力图。
 计算逻辑: 同上，只是 values=accept，aggfunc=mean。
+11b. `heatmap_type_position_by_score_group_2x2.png`: 按 `base_rating>4` 与 `base_rating<=4` 分组后，绘制 2x2 合并热力图。
+计算逻辑: 每个分组内分别计算 `type×position` 的 mean(`rating_delta`) 与 mean(`accept`)，共四个子图拼接为一张大图。
 12. `stacked_delta_sign_by_attack_type.png`: 各类型 up/same/down 比例堆叠图。
 计算逻辑: 按 `(attack_type, delta_sign)` 计数后行归一化。
 13. `stacked_decision_transition_by_attack_type.png`: 各类型决策迁移比例堆叠图。

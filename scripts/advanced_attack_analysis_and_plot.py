@@ -327,7 +327,67 @@ def plot_charts(base_df: pd.DataFrame, attack_df: pd.DataFrame, outdir: Path) ->
     plt.savefig(outdir / "heatmap_accept_rate_type_position.png")
     plt.close()
 
-    # 6. Positive/down/same stacked by attack type
+    # 6. Combined 2x2 heatmaps split by attacked score threshold
+    score_splits = [
+        ("High Baseline (base_rating > 4)", attack_df[attack_df["base_rating"] > 4]),
+        ("Low Baseline (base_rating <= 4)", attack_df[attack_df["base_rating"] <= 4]),
+    ]
+    delta_abs_max = float(np.nanmax(np.abs(attack_df["rating_delta"].to_numpy())))
+    if not np.isfinite(delta_abs_max) or delta_abs_max == 0:
+        delta_abs_max = 1.0
+
+    fig, axes = plt.subplots(2, 2, figsize=(18, 12))
+    for row_idx, (split_name, split_df) in enumerate(score_splits):
+        delta_ax = axes[row_idx, 0]
+        accept_ax = axes[row_idx, 1]
+
+        if split_df.empty:
+            delta_ax.axis("off")
+            delta_ax.text(0.5, 0.5, f"{split_name}\nNo data", ha="center", va="center", fontsize=12)
+            accept_ax.axis("off")
+            accept_ax.text(0.5, 0.5, f"{split_name}\nNo data", ha="center", va="center", fontsize=12)
+            continue
+
+        delta_split = split_df.pivot_table(
+            index="attack_type", columns="attack_position", values="rating_delta", aggfunc="mean"
+        ).reindex(index=type_order, columns=pos_order)
+        accept_split = split_df.pivot_table(
+            index="attack_type", columns="attack_position", values="accept", aggfunc="mean"
+        ).reindex(index=type_order, columns=pos_order)
+
+        sns.heatmap(
+            delta_split,
+            ax=delta_ax,
+            annot=True,
+            fmt=".2f",
+            cmap="coolwarm",
+            center=0,
+            vmin=-delta_abs_max,
+            vmax=delta_abs_max,
+        )
+        delta_ax.set_title(f"{split_name}: Mean Rating Delta")
+        delta_ax.set_xlabel("Attack Position")
+        delta_ax.set_ylabel("Attack Type")
+
+        sns.heatmap(
+            accept_split,
+            ax=accept_ax,
+            annot=True,
+            fmt=".2f",
+            cmap="YlGnBu",
+            vmin=0,
+            vmax=1,
+        )
+        accept_ax.set_title(f"{split_name}: Accept Rate")
+        accept_ax.set_xlabel("Attack Position")
+        accept_ax.set_ylabel("Attack Type")
+
+    fig.suptitle("Attack Type x Position Heatmaps by Score Group", fontsize=14)
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    plt.savefig(outdir / "heatmap_type_position_by_score_group_2x2.png")
+    plt.close()
+
+    # 7. Positive/down/same stacked by attack type
     sign_counts = (
         attack_df.groupby(["attack_type", "delta_sign"])
         .size()
@@ -463,6 +523,7 @@ def write_readme(input_file: Path, base_df: pd.DataFrame, attack_df: pd.DataFram
         "- `box_rating_delta_by_attack_position.png`",
         "- `heatmap_mean_delta_type_position.png`",
         "- `heatmap_accept_rate_type_position.png`",
+        "- `heatmap_type_position_by_score_group_2x2.png`",
         "- `stacked_delta_sign_by_attack_type.png`",
         "- `stacked_decision_transition_by_attack_type.png`",
         "- `bar_accept_rate_by_attack_type.png`",
@@ -518,6 +579,8 @@ def write_plot_explanation_doc(input_file: Path, base_df: pd.DataFrame, attack_d
         "计算逻辑: `pivot_table(index=attack_type, columns=attack_position, values=rating_delta, aggfunc=mean)`。",
         "11. `heatmap_accept_rate_type_position.png`: 类型×位置 Accept 率热力图。",
         "计算逻辑: 同上，只是 values=accept，aggfunc=mean。",
+        "11b. `heatmap_type_position_by_score_group_2x2.png`: 按 `base_rating>4` 与 `base_rating<=4` 分组后，绘制 2x2 合并热力图。",
+        "计算逻辑: 每个分组内分别计算 `type×position` 的 mean(`rating_delta`) 与 mean(`accept`)，共四个子图拼接为一张大图。",
         "12. `stacked_delta_sign_by_attack_type.png`: 各类型 up/same/down 比例堆叠图。",
         "计算逻辑: 按 `(attack_type, delta_sign)` 计数后行归一化。",
         "13. `stacked_decision_transition_by_attack_type.png`: 各类型决策迁移比例堆叠图。",

@@ -16,6 +16,7 @@
 - `box_rating_delta_by_attack_position.png`
 - `heatmap_mean_delta_type_position.png`
 - `heatmap_accept_rate_type_position.png`
+- `heatmap_type_position_by_score_group_2x2.png`
 - `stacked_delta_sign_by_attack_type.png`
 - `stacked_decision_transition_by_attack_type.png`
 - `bar_accept_rate_by_attack_type.png`
