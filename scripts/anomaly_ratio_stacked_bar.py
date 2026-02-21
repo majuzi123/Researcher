@@ -521,16 +521,15 @@ for base_id, group in df_dec.groupby('base_paper_id'):
 reject_accept_cases_sorted = sorted(reject_accept_cases, key=lambda x: x['variant_score']-x['orig_score'], reverse=True)[:5]
 pd.DataFrame(reject_accept_cases_sorted).to_csv(f'{outdir}/typical_reject_accept_cases.csv', index=False)
 
-# 2. Accept高分论文删除methods/experiments后仍为Accept且分数高的异常案例
+# 2. Accept论文删除methods/experiments后仍为Accept的异常案例
 accept_high_cases = []
-high_score_threshold = 4.5  # 可调整
 for base_id, group in df_dec.groupby('base_paper_id'):
     orig = group[group['variant_type']=='original']
     if orig.empty:
         continue
     orig_score = orig.iloc[0]['rating']
     orig_dec = orig.iloc[0]['decision']
-    if orig_dec != 'Accept' or orig_score < high_score_threshold:
+    if orig_dec != 'Accept':
         continue
     for vt in ['no_methods','no_experiments']:
         variant = group[group['variant_type']==vt]
@@ -538,7 +537,7 @@ for base_id, group in df_dec.groupby('base_paper_id'):
             continue
         v_score = variant.iloc[0]['rating']
         v_dec = variant.iloc[0]['decision']
-        if v_dec == 'Accept' and v_score >= high_score_threshold:
+        if v_dec == 'Accept':
             accept_high_cases.append({
                 'base_paper_id': base_id,
                 'orig_score': orig_score,
@@ -601,13 +600,42 @@ plt.close()
 print(f"Saved typical cases line chart to {outdir}/typical_cases_line.png")
 
 # ========== 典型案例变体全折线图 ==========
-# 挑选Reject→Accept且分数升高最多的前2个base_paper_id，并补充固定关注案例
-num_typical = 2
-forced_typical_ids = ['JlSyXwCEIQ', 'GSBHKiw19c']
-typical_ids = [c['base_paper_id'] for c in reject_accept_cases_sorted[:num_typical]] if reject_accept_cases_sorted else []
-for forced_id in forced_typical_ids:
-    if forced_id not in typical_ids:
-        typical_ids.append(forced_id)
+# 目标：合并图固定为 2 个 AC→AC + 2 个 RE→AC（第1个子图优先 AC→AC 且 no_methods）
+def _pick_unique_case_entries(cases, top_n=2, prefer_variants=None):
+    prefer_variants = prefer_variants or []
+    ranked = sorted(
+        cases,
+        key=lambda x: (
+            0 if x.get('variant_type') in prefer_variants else 1,
+            -(x.get('variant_score', np.nan) - x.get('orig_score', np.nan)),
+        ),
+    )
+    selected = []
+    used_ids = set()
+    for item in ranked:
+        pid = item.get('base_paper_id')
+        if pid in used_ids:
+            continue
+        selected.append(item)
+        used_ids.add(pid)
+        if len(selected) >= top_n:
+            break
+    return selected
+
+selected_ac2ac = _pick_unique_case_entries(
+    accept_high_cases,
+    top_n=2,
+    prefer_variants=['no_methods', 'no_experiments'],
+)
+selected_re2ac = _pick_unique_case_entries(
+    reject_accept_cases,
+    top_n=2,
+    prefer_variants=['no_methods', 'no_experiments'],
+)
+typical_specs = (
+    [{'base_paper_id': c['base_paper_id'], 'case_tag': 'AC→AC', 'focus_variant': c.get('variant_type', '')} for c in selected_ac2ac] +
+    [{'base_paper_id': c['base_paper_id'], 'case_tag': 'RE→AC', 'focus_variant': c.get('variant_type', '')} for c in selected_re2ac]
+)
 
 def _clean_base_title(raw_title):
     if not isinstance(raw_title, str):
@@ -615,9 +643,10 @@ def _clean_base_title(raw_title):
     # 去掉标题末尾的变体后缀，例如 "[no_methods]"
     return re.sub(r'\s*\[[^\]]+\]\s*$', '', raw_title).strip()
 
-if typical_ids:
+if typical_specs:
     combined_cases = []
-    for paper_id in typical_ids:
+    for spec in typical_specs:
+        paper_id = spec['base_paper_id']
         variants = df_dec[df_dec['base_paper_id'] == paper_id].copy()
         if variants.empty:
             print(f"Warning: no data for forced/typical paper_id={paper_id}")
@@ -642,6 +671,8 @@ if typical_ids:
         title_snapshot = textwrap.fill(base_title, width=78) if base_title else '(title unavailable)'
         combined_cases.append({
             'paper_id': paper_id,
+            'case_tag': spec['case_tag'],
+            'focus_variant': spec['focus_variant'],
             'variant_types': variant_types,
             'scores': scores,
             'decisions': decisions,
@@ -670,27 +701,62 @@ if typical_ids:
         review_snapshot.to_csv(f'{outdir}/typical_case_reviews_{paper_id}.csv', index=False)
         print(f"Saved typical case review snapshot for {paper_id} to {outdir}/typical_case_reviews_{paper_id}.csv")
 
-    # 合并图：最多展示4个典型论文，方便横向对比
+    # 合并图：展示 2 个 AC→AC + 2 个 RE→AC，便于横向对比
     combined_cases = combined_cases[:4]
     if combined_cases:
-        fig, axes = plt.subplots(2, 2, figsize=(22, 12))
+        fig, axes = plt.subplots(2, 2, figsize=(24, 14))
         axes = axes.flatten()
         for i, case in enumerate(combined_cases):
             ax = axes[i]
             x = np.arange(len(case['variant_types']))
-            ax.plot(x, case['scores'], marker='o', color='blue', linewidth=2)
-            for j, (s, d) in enumerate(zip(case['scores'], case['decisions'])):
-                ax.text(j, s, d, color='red' if d == 'Accept' else 'black', fontsize=8, ha='center', va='bottom')
+            ax.plot(x, case['scores'], marker='o', color='blue', linewidth=2.5, markersize=7)
+            for j, (vt, s, d) in enumerate(zip(case['variant_types'], case['scores'], case['decisions'])):
+                ax.text(
+                    j,
+                    s,
+                    d,
+                    color='red' if d == 'Accept' else 'black',
+                    fontsize=14,
+                    fontweight='bold',
+                    ha='center',
+                    va='bottom'
+                )
+                # 强调异常点：no_methods / no_experiments 下仍为 Accept
+                if d == 'Accept' and vt in ['no_methods', 'no_experiments']:
+                    ax.scatter(
+                        j, s,
+                        s=240,
+                        facecolors='none',
+                        edgecolors='#fb8c00',
+                        linewidths=2.0,
+                        zorder=6
+                    )
+                    ax.annotate(
+                        'anomaly',
+                        (j, s),
+                        textcoords='offset points',
+                        xytext=(0, -16),
+                        ha='center',
+                        va='top',
+                        color='#fb8c00',
+                        fontsize=10,
+                        fontweight='bold'
+                    )
             ax.set_xticks(x)
-            ax.set_xticklabels(case['variant_types'], rotation=30, ha='right', fontsize=8)
+            ax.set_xticklabels(case['variant_types'], rotation=30, ha='right', fontsize=11)
             short_title = textwrap.shorten(case['title_snapshot'].replace('\n', ' '), width=95, placeholder='...')
-            ax.set_title(f"{case['paper_id']}\n{short_title}", fontsize=10)
-            ax.set_ylabel('Score')
-            ax.set_xlabel('Variant Type')
+            ax.set_title(f"{case['case_tag']} | {case['paper_id']}\n{short_title}", fontsize=13)
+            ax.set_ylabel('Score', fontsize=12)
+            ax.set_xlabel('Variant Type', fontsize=12)
+            ax.tick_params(axis='y', labelsize=11)
+            ax.grid(axis='y', alpha=0.2)
             ax.set_ylim(0, max(7, np.nanmax(case['scores']) + 0.5))
         for j in range(len(combined_cases), 4):
             axes[j].axis('off')
-        fig.suptitle('Typical Cases: All Variants Score & Decision (Combined View)', fontsize=14)
+        fig.suptitle(
+            'Typical Cases: 2 AC→AC + 2 RE→AC (Accept in no_methods/no_experiments highlighted)',
+            fontsize=18
+        )
         plt.tight_layout(rect=(0, 0, 1, 0.96))
         plt.savefig(f'{outdir}/typical_case_variants_line_combined_4papers.png')
         plt.close()
