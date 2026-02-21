@@ -476,17 +476,32 @@ def plot_charts(base_df: pd.DataFrame, attack_df: pd.DataFrame, outdir: Path) ->
     plt.savefig(outdir / "scatter_baseline_vs_delta.png")
     plt.close()
 
-    # 11. Per-paper mean delta histogram with Top20 overlay for comparison
-    per_paper = attack_df.groupby("base_paper_id")["rating_delta"].mean()
-    top20_per_paper = per_paper.nlargest(20)
+    # 11. Per-paper mean delta histogram split by baseline score group
+    per_paper = (
+        attack_df.groupby("base_paper_id")
+        .agg(mean_delta=("rating_delta", "mean"), base_rating=("base_rating", "first"))
+        .reset_index()
+    )
+    per_paper["baseline_group"] = np.where(
+        per_paper["base_rating"] <= 4,
+        "Low baseline (<=4)",
+        "High baseline (>4)",
+    )
     plt.figure(figsize=(9, 6))
-    sns.histplot(per_paper, bins=30, kde=True, color="gray", alpha=0.45, label="All papers")
-    sns.histplot(top20_per_paper, bins=10, kde=True, color="red", alpha=0.45, label="Top 20 sensitive papers")
+    sns.histplot(
+        data=per_paper,
+        x="mean_delta",
+        hue="baseline_group",
+        hue_order=["Low baseline (<=4)", "High baseline (>4)"],
+        bins=30,
+        multiple="stack",
+        alpha=0.9,
+        palette={"Low baseline (<=4)": "#e53935", "High baseline (>4)": "#43a047"},
+    )
     plt.axvline(0, color="red", linestyle="--", linewidth=1)
-    plt.title("Mean Attack Delta Distribution: All vs Top 20 Sensitive")
+    plt.title("Mean Attack Delta Distribution by Baseline Group")
     plt.xlabel("Mean Delta per Paper")
     plt.ylabel("Count")
-    plt.legend()
     plt.tight_layout()
     plt.savefig(outdir / "hist_mean_delta_per_paper.png")
     plt.close()
@@ -591,8 +606,8 @@ def write_plot_explanation_doc(input_file: Path, base_df: pd.DataFrame, attack_d
         "计算逻辑: `groupby(attack_position)['accept'].mean()`。",
         "16. `scatter_baseline_vs_delta.png`: baseline 分数与分数变化散点图（按 attack_type 着色）。",
         "计算逻辑: 每条攻击样本一个点，x=base_rating, y=rating_delta。",
-        "17. `hist_mean_delta_per_paper.png`: 每篇论文平均攻击效应分布直方图。",
-        "计算逻辑: 先按 `base_paper_id` 求 mean(rating_delta)，再直方图 + KDE。",
+        "17. `hist_mean_delta_per_paper.png`: 每篇论文平均攻击效应分布直方图（按 baseline 分组着色）。",
+        "计算逻辑: 先按 `base_paper_id` 求 mean(rating_delta) 与 base_rating，再按 `base_rating<=4`(红) / `>4`(绿) 叠加直方图 + KDE。",
         "18. `heatmap_count_type_position.png`: 类型×位置样本数热力图（检查数据平衡性）。",
         "计算逻辑: `pivot_table(..., values=base_paper_id, aggfunc=count)`。",
         "19. `box_rating_delta_section_found.png`（若存在）: 章节命中与未命中时的 `rating_delta` 对比。",
