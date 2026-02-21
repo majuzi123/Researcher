@@ -105,14 +105,6 @@
 原始与变体决策一致性统计饼图。
 ### score_hist.png
 分数区间分布直方图。
-### score_hist_no_abstract.png
-no_abstract 评分分布直方图，红线为original均值。
-### decision_bar_no_abstract.png
-no_abstract 决策分布柱状图。
-### score_diff_box_no_abstract.png
-no_abstract 评分变化箱线图。
-### extreme_score_scatter_no_abstract.png
-no_abstract 评分变化极端值散点图。
 ### score_hist_no_conclusion.png
 no_conclusion 评分分布直方图，红线为original均值。
 ### decision_bar_no_conclusion.png
@@ -121,14 +113,14 @@ no_conclusion 决策分布柱状图。
 no_conclusion 评分变化箱线图。
 ### extreme_score_scatter_no_conclusion.png
 no_conclusion 评分变化极端值散点图。
-### score_hist_no_experiments.png
-no_experiments 评分分布直方图，红线为original均值。
-### decision_bar_no_experiments.png
-no_experiments 决策分布柱状图。
-### score_diff_box_no_experiments.png
-no_experiments 评分变化箱线图。
-### extreme_score_scatter_no_experiments.png
-no_experiments 评分变化极端值散点图。
+### score_hist_no_abstract.png
+no_abstract 评分分布直方图，红线为original均值。
+### decision_bar_no_abstract.png
+no_abstract 决策分布柱状图。
+### score_diff_box_no_abstract.png
+no_abstract 评分变化箱线图。
+### extreme_score_scatter_no_abstract.png
+no_abstract 评分变化极端值散点图。
 ### score_hist_no_introduction.png
 no_introduction 评分分布直方图，红线为original均值。
 ### decision_bar_no_introduction.png
@@ -137,6 +129,14 @@ no_introduction 决策分布柱状图。
 no_introduction 评分变化箱线图。
 ### extreme_score_scatter_no_introduction.png
 no_introduction 评分变化极端值散点图。
+### score_hist_no_experiments.png
+no_experiments 评分分布直方图，红线为original均值。
+### decision_bar_no_experiments.png
+no_experiments 决策分布柱状图。
+### score_diff_box_no_experiments.png
+no_experiments 评分变化箱线图。
+### extreme_score_scatter_no_experiments.png
+no_experiments 评分变化极端值散点图。
 ### score_hist_no_methods.png
 no_methods 评分分布直方图，红线为original均值。
 ### decision_bar_no_methods.png

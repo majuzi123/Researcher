@@ -38,8 +38,19 @@ df = pd.DataFrame(rows)
 # 只保留有评分的
 df = df[df['rating'].notnull()]
 
-# 保证 original 在所有图表中最左边
-variant_order = sorted(df['variant_type'].unique(), key=lambda x: (x != 'original', x))
+# 统一变体展示顺序：original、no_conclusion、no_abstract、no_introduction、no_experiments、no_methods
+present_variants = df['variant_type'].dropna().astype(str).unique().tolist()
+preferred_variant_order = [
+    'original',
+    'no_conclusion',
+    'no_abstract',
+    'no_introduction',
+    'no_experiments',
+    'no_methods',
+]
+variant_order = [v for v in preferred_variant_order if v in present_variants]
+variant_order += [v for v in present_variants if v not in variant_order]
+df['variant_type'] = pd.Categorical(df['variant_type'], categories=variant_order, ordered=True)
 
 # 生成 score_diff_df（必须在用到它之前）
 score_diff_long = []
@@ -96,7 +107,13 @@ for score in [med, low]:
 
 plt.figure(figsize=(10,6))
 for case_id, color, label in zip(cases, ['red','green','blue'], ['High','Median','Low']):
-    sub = df[df['base_paper_id']==case_id].sort_values('variant_type')
+    sub = (
+        df[df['base_paper_id']==case_id]
+        .set_index('variant_type')
+        .reindex(variant_order)
+        .dropna(subset=['rating'])
+        .reset_index()
+    )
     plt.plot(sub['variant_type'], sub['rating'], marker='o', label=f'{label} ({case_id})')
 plt.axhline(orig_mean, color='gray', linestyle='--', label=f'Original Mean: {orig_mean:.2f}')
 plt.title('Score Change for High/Median/Low Cases')
@@ -109,7 +126,13 @@ plt.close()
 # 个案决策变化合并到一张图
 plt.figure(figsize=(10,6))
 for case_id, color, label in zip(cases, ['red','green','blue'], ['High','Median','Low']):
-    sub = df[df['base_paper_id']==case_id].sort_values('variant_type')
+    sub = (
+        df[df['base_paper_id']==case_id]
+        .set_index('variant_type')
+        .reindex(variant_order)
+        .dropna(subset=['decision'])
+        .reset_index()
+    )
     dec_map = sub['decision'].map({'Accept':1,'Reject':0})
     plt.plot(sub['variant_type'], dec_map, marker='o', label=f'{label} ({case_id})')
 plt.title('Decision Change for High/Median/Low Cases')
@@ -233,7 +256,7 @@ plt.savefig(f'{outdir}/score_std_per_paper.png')
 plt.close()
 
 # 8. 变体类型与评分变化热力图
-pivot = df.pivot_table(index='base_paper_id', columns='variant_type', values='rating')
+pivot = df.pivot_table(index='base_paper_id', columns='variant_type', values='rating', observed=False)
 score_diff = pivot.subtract(pivot['original'], axis=0)
 score_diff = score_diff.drop(columns=['original'])
 plt.figure(figsize=(12,6))
